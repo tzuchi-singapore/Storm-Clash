@@ -1,3 +1,15 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Storm Clash">
+<meta name="theme-color" content="#000000">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
 <title>Storm Clash</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -106,6 +118,7 @@ const $ = id => document.getElementById(id);
 /* ================= save ================= */
 let SAVE = { stars:{}, team:['kai','mei','rajan','zara','hong'], xp:{}, card:'none', bstars:0, ui:{ op:.45, size:1, zoom: isTouch ? 1.15 : 1, pos:{} }, snd:true };
 try { const s = JSON.parse(localStorage.getItem('stormclash3') || 'null'); if (s){ const ui = Object.assign({}, SAVE.ui, s.ui||{}); SAVE = Object.assign(SAVE, s); SAVE.ui = ui; } } catch(e){}
+if (!SAVE.story) SAVE.story = { c:[0, 0] };
 if (!SAVE.deck){ SAVE.deck = {'atk:0':1, 'hp:0':1, 'gauge:0':1, 'crit:1':1}; } if (!SAVE.equip) SAVE.equip = [null, null, null];
 function persist(){ try { localStorage.setItem('stormclash3', JSON.stringify(SAVE)); } catch(e){} }
 
@@ -248,6 +261,36 @@ const MISSIONS = [
   { name:'Canyon Gate', stage:'canyon', lv:2, desc:'Storm the Red Canyon fort and defeat Warlord Grath.',
     zones:[ [[{k:'spear',n:3},{k:'archer',n:2}],[{k:'rider',n:2},{k:'spear',n:2,side:'L'}]], [[{k:'archer',n:4},{k:'spear',n:2}],[{k:'hero',n:2},{k:'rider',n:1}]], [[{k:'boss',n:1},{k:'spear',n:3},{k:'archer',n:2}]] ] },
 ];
+const STORY = [
+  { name:'Storm over the Valley', cover:'story_cover1', intro:'Warlord Grath has found the Storm Stone. Its purple lightning bends heroes to his will. Free your friends and take back the valley.',
+    steps:[
+      { type:'mission', mi:0, art:'story_s1_1', title:'Forest Road', text:'Bandits ambush Kai and Mei on the forest road. Village guards are hiding along the way: walk up to them to recruit them. Recruits fight beside you with 3 lives each.' },
+      { type:'versus', foe:'hong', lvl:0, stage:'forest', art:'story_s1_1', title:'Duel: Hong the Flame Blade', text:'A swordsman with glowing purple eyes blocks the bridge. The Storm Stone has taken his mind. Beat him in a duel to break the spell.' },
+      { type:'mission', mi:1, art:'story_s1_2', title:'Raptor Ambush', text:'Grath\'s raptor riders hunt travellers in the jungle. Knock the riders off and ride their raptors yourself.' },
+      { type:'battle', stage:'village', art:'story_s1_3', title:'Battle: Hold the Village', text:'The bandit army marches on the riverside village. Capture the gold mines, hire soldiers and destroy the bandit fort.' },
+      { type:'mission', mi:2, art:'story_s1_3', title:'Village Siege', text:'Bandits still hold the village streets. Drive them out house by house and save the villagers.' },
+      { type:'team', n:2, foes:['zara','mei'], lvl:1, stage:'village', art:'story_s1_3', title:'2 vs 2: The Bewitched Pair', text:'Zara and a storm-twin of Mei attack under Grath\'s spell. Two of your heroes take them on, one at a time.' },
+      { type:'mission', mi:3, art:'story_s1_4', title:'Night Defence', text:'Wave after wave of torch-bearing bandits storm the village gate at night. Hold the line until the last one falls.' },
+      { type:'team', n:3, foes:['knight','monk','ayu'], lvl:1, stage:'temple', art:'story_s1_4', title:'3 vs 3: The Temple Guardians', text:'Auric, Tashi and Ayu guard the temple road, their eyes glowing purple. Three of your heroes must free them.' },
+      { type:'mission', mi:4, art:'story_s1_5', title:'Canyon Gate', text:'Storm Grath\'s red canyon fort and defeat the warlord himself. The Storm Stone glows on his chest.' },
+      { type:'team', n:4, foes:['rajan','hong','zara','knight'], lvl:2, stage:'canyon', art:'story_s1_5', title:'4 vs 4: Grath\'s Storm Guard', text:'Before it shatters, the Storm Stone takes four champions at once. Beat all four to end Grath\'s storm for good.' },
+    ] },
+  { name:'Rise of the Elemental Lord', cover:'story_cover2', intro:'The broken Storm Stone woke an older power. Vortan, Lord of Ice, Fire and Wind, gathers dark champions in the volcano. Stop him before winter and fire swallow the land.',
+    steps:[
+      { type:'mission', M:{ name:'Frozen Pass', stage:'snow', lv:1, zones:[ [[{k:'spear',n:3},{k:'archer',n:2}],[{k:'rider',n:1},{k:'spear',n:2}]], [[{k:'archer',n:3},{k:'spear',n:2,side:'L'}],[{k:'hero',id:'ninja',n:1},{k:'spear',n:2}]] ] }, art:'story_s2_1', title:'Frozen Pass', text:'A blizzard hides Vortan\'s mercenaries in the mountain pass, and a shadow ninja watches from the cliffs.' },
+      { type:'versus', foe:'ninja', lvl:1, stage:'snow', art:'story_s2_1', title:'Duel: Kage of the Shadows', text:'Kage, Vortan\'s spy, blocks the way down the mountain. Watch out for his shadow clones.' },
+      { type:'mission', M:{ name:'Lava Road', stage:'volcano', lv:1, zones:[ [[{k:'spear',n:3},{k:'archer',n:2}],[{k:'rider',n:2}]], [[{k:'spear',n:3},{k:'archer',n:2,side:'L'}],[{k:'rider',n:1},{k:'spear',n:2},{k:'archer',n:1}]] ] }, art:'story_s2_2', title:'Lava Road', text:'The road to the volcano is cracked and burning. Ice golems guard the way, and meteors fall from the red sky.' },
+      { type:'battle', stage:'volcano', art:'story_s2_2', title:'Battle: Volcano Outpost', text:'Vortan\'s army holds the volcano outpost. Take the gold mines, raise your own army and break their fort.' },
+      { type:'mission', M:{ name:'Sakura Temple', stage:'temple', lv:2, zones:[ [[{k:'spear',n:4}],[{k:'archer',n:3},{k:'spear',n:2,side:'L'}]], [[{k:'hero',id:'samurai',n:1},{k:'spear',n:2}],[{k:'rider',n:2},{k:'archer',n:2}]] ] }, art:'story_s2_3', title:'Sakura Temple', text:'Mercenaries have taken the cherry blossom temple. A lone samurai waits in the courtyard.' },
+      { type:'team', n:2, foes:['samurai','ninja'], lvl:1, stage:'temple', art:'story_s2_3', title:'2 vs 2: Blade and Shadow', text:'Takeshi and Kage fight side by side for Vortan. Two of your heroes face them in turn.' },
+      { type:'mission', M:{ name:'Neon Rooftop', stage:'city', lv:2, zones:[ [[{k:'spear',n:3},{k:'archer',n:3}],[{k:'rider',n:2},{k:'spear',n:2}]], [[{k:'hero',id:'sci',n:1},{k:'archer',n:2}],[{k:'hero',id:'ninja',n:1},{k:'spear',n:3}]] ] }, art:'story_s2_4', title:'Neon Rooftop', text:'High above the neon city, Vortan\'s agents have trapped the boy genius Leo and his robot dog Bolt.' },
+      { type:'team', n:3, foes:['sci','samurai','ninja'], lvl:2, stage:'city', art:'story_s2_4', title:'3 vs 3: The Dark Trio', text:'Vortan\'s spell reaches the rooftop. Leo, Takeshi and Kage turn on you. Three of your heroes must win.' },
+      { type:'mission', M:{ name:'Volcano Throne', stage:'volcano', lv:2, zones:[ [[{k:'spear',n:3},{k:'archer',n:2},{k:'rider',n:1}],[{k:'hero',id:'samurai',n:1},{k:'spear',n:2}]], [[{k:'hero',id:'lord',n:1,hpMul:2.2},{k:'spear',n:3},{k:'archer',n:2}]] ] }, art:'story_s2_5', title:'Volcano Throne', text:'Vortan rises from his lava throne. Defeat the Elemental Lord in his own crater.' },
+      { type:'team', n:4, foes:['lord','sci','samurai','ninja'], lvl:2, stage:'volcano', art:'story_s2_5', title:'4 vs 4: The Final Storm', text:'With his last strength Vortan calls his dark champions. Four of your heroes against four. Win, and the land is free.' },
+    ] },
+];
+const STEP_ICON = { mission:'⚔', versus:'VS', battle:'♜', team:'' };
+const stepLabel = s => s.type === 'mission' ? 'Mission' : s.type === 'versus' ? '1 vs 1' : s.type === 'battle' ? 'Battle' : `${s.n} vs ${s.n}`;
 const CARD_DEFS = {
   atk:   { name:'Power',        icon:'⚔', col:'#e8503a', v:[.15,.25,.40], d:v => `Your heroes deal +${v*100|0}% damage.` },
   def:   { name:'Iron Skin',    icon:'⛊', col:'#7a92aa', v:[.15,.25,.35], d:v => `Your heroes take ${v*100|0}% less damage.` },
@@ -1438,12 +1481,14 @@ function bodyDraw(u){
     const sc = u.h / META[base + '_idle'].h;
     return { im, sx:0, sy:0, sw:im.naturalWidth, sh:im.naturalHeight, dx:-m.w*sc*m.ax, dy:-m.h*sc, dw:m.w*sc, dh:m.h*sc, proc: proc || !!HEROES[u.sid].summon || !!HEROES[u.sid].form };
   }
-  const base = u.kind === 'mount' ? 'raptor' : u.kind, key = base + '_' + soldierFrame(u), m = META[key], im = imgFor(key, u.team);
+  const base = u.kind === 'mount' ? 'raptor' : u.kind, key = base + '_' + soldierFrame(u), m = META[key], im = imgFor(key, u.recruit ? 0 : u.team);
   if (!m || !ok(im)) return null;
   const sc = u.h / META[base + '_idle'].h, iw = im.naturalWidth || im.width, ih = im.naturalHeight || im.height;
   return { im, sx:0, sy:0, sw:iw, sh:ih, dx:-m.w*sc*m.ax, dy:-m.h*sc, dw:m.w*sc, dh:m.h*sc };
 }
 function drawBars(u){
+  if (u.recruit) return;
+  if (u.lives && u.team === 0 && u.hp > 0){ ctx.font = '900 10px ' + UIF; ctx.textAlign = 'center'; ctx.fillStyle = '#ff7a9a'; ctx.strokeStyle = 'rgba(0,0,0,.6)'; ctx.lineWidth = 2; const t = '♥'.repeat(u.lives); ctx.strokeText(t, u.x - G.cam, G.st.FT + u.z + 20); ctx.fillText(t, u.x - G.cam, G.st.FT + u.z + 20); }
   if (u.hp <= 0 || u.kind === 'mount') return;
   const gx = u.x - G.cam;
   if (u.kind === 'fort'){
@@ -1475,6 +1520,7 @@ function drawMarkers(){
   for (const u of G.units){
     if (!u.alive() || u.kind === 'fort' || u.kind === 'mount' || u.summon) continue;
     let label = null, col = '#3d8be0', big = false;
+    if (u.recruit){ const gx = u.x - G.cam; if (gx > -10 && gx < viewW + 10) bubble(gx, G.st.FT + u.z - u.h - 8, 'Recruit', '#2faf6a', false); continue; }
     const myTeam = G.online === 'guest' ? 1 : 0;
     if (u === G.player){ label = 'You'; big = true; }
     else if (u.team === myTeam && u.kind === 'hero') label = 'Team-mate';
@@ -1642,12 +1688,13 @@ function aiInput(u){
   const out = {l:false,r:false,u:false,d:false,defH:false,ev:[],sp:null};
   if (u.kind === 'fort' || u.kind === 'mount') return out;
   if (u.state === 'ult' && u.ult && u.ult.spin){ const o = nearestFoe(u); if (o){ if (o.x > u.x + 20) out.r = true; else if (o.x < u.x - 20) out.l = true; if (o.z > u.z + 8) out.d = true; else if (o.z < u.z - 8) out.u = true; } return out; }
+  if (u.recruit){ const p = G.player; if (p) u.face = p.x > u.x ? 1 : -1; return out; }
   if (u.state === 'grab'){ if (u.t > 16 + rnd(0,20)){ if (Math.random() < .55) out.sp = 'd'; else out.ev.push('A'); } return out; }
   if (!u.can() && u.state !== 'defend' && u.state !== 'atk') return out;
   const L = AI_LV[u.team === 0 ? 1 : G.lv];
   if (--u.retarget <= 0 || !u.tgt || !u.tgt.alive()){ u.tgt = nearestFoe(u); u.retarget = 30; }
   const o = u.tgt;
-  if (u.team === 0 && u.kind === 'hero' && (!o || (G.command === 'follow' && Math.abs(o.x - u.x) > 160))){
+  if (u.team === 0 && (u.kind === 'hero' || (SOLDIER[u.kind] && G.mode !== 'battle')) && (!o || (G.command === 'follow' && Math.abs(o.x - u.x) > 160))){
     const p = G.player; if (p && p !== u && p.alive()){ const dx = p.x - 70*(p.face||1) - u.x, dz = p.z - u.z + 30; if (Math.abs(dx) > 30){ if (dx > 0) out.r = true; else out.l = true; } if (Math.abs(dz) > 20){ if (dz > 0) out.d = true; else out.u = true; } }
     if (!o || G.command === 'follow') return out;
   }
@@ -1725,8 +1772,11 @@ function baseG(mode, st, lv){
   return { mode, st, lv, items:[], units:[], frame:0, cam:0, msg:[], backups:[], go:false, command:'attack', lost:0, time:0, kos:0, online:ONLINE_START, cards:[], revive:0, xpMul:0, usedHeroes:new Set(), respawn:[], phase:'intro', pt:0, echoes:[], cutin:null };
 }
 function setupCards(){ G.cards = useCards(); for (const k of G.cards){ const c = cardOf(k); if (c.id === 'revive') G.revive = Math.max(G.revive, c.v); if (c.id === 'xp') G.xpMul += c.v; } }
+function addRecruits(n, x0){
+  for (let i=0;i<n;i++){ const k = Math.random() < .6 ? 'spear' : 'archer'; const u = soldierUnit(k, 0, x0 + i*70 + rnd(-10,10), rnd(20, ZMAX()-20)); u.team = -1; u.recruit = true; u.entered = true; u.face = -1; G.units.push(u); }
+}
 function startMission(i){
-  const M = MISSIONS[i], st = STAGES[M.stage];
+  const M = typeof i === 'object' ? i : MISSIONS[i], st = STAGES[M.stage]; if (typeof i === 'object') i = -1;
   G = baseG('mission', st, M.lv); Object.assign(G, { M, mi:i, zone:0, wave:0 }); setupCards();
   G.ZW = Math.max(960, Math.ceil(viewW)); G.bounds = { l:0, r:G.ZW };
   fx.length = 0; particles.length = 0;
@@ -1736,10 +1786,11 @@ function startMission(i){
   G.backups = team.slice(2).filter(Boolean);
   setSkillButtons(p.id);
   S.screen = 'fight'; S.paused = false; S.mode = 'mission'; touchEl.hidden = !isTouch; $('cmd').hidden = false; updateCmdLabel();
+  addRecruits(2, 400);
   spawnWave();
 }
-function startBattle(){
-  const st = STAGES.canyon;
+function startBattle(stageKey){
+  const st = STAGES[stageKey || 'canyon'];
   G = baseG('battle', st, 1); Object.assign(G, { gold:[160,160], hireCool:60 }); setupCards();
   G.mapW = 3600; G.ZW = G.mapW; G.bounds = { l:0, r:G.mapW };
   fx.length = 0; particles.length = 0;
@@ -1778,8 +1829,9 @@ function spawnWave(){
       let u;
       if (g.k === 'hero'){
         const pool = HERO_IDS.filter(id => !used.includes(id) && !G.units.some(v => v.alive() && v.id === id && v.team === 1));
-        const pick = (pool.length ? pool : HERO_IDS)[Math.floor(Math.random() * (pool.length || HERO_IDS.length))];
+        const pick = g.id || (pool.length ? pool : HERO_IDS)[Math.floor(Math.random() * (pool.length || HERO_IDS.length))];
         u = heroUnit(pick, 1, x, z, G.lv);
+        if (g.hpMul){ u.hp = u.maxhp = Math.round(u.maxhp*g.hpMul); u.hpShow = u.hp; }
       } else u = soldierUnit(g.k, 1, x, z);
       u.face = side > 0 ? -1 : 1; u.entered = false;
       G.units.push(u); ri++;
@@ -1820,6 +1872,8 @@ function stepFightInner(){
     if (Math.abs(a.x-b.x) < min && Math.abs(a.z-b.z) < 14){ const push = (min - Math.abs(a.x-b.x))/2*.5, s = a.x < b.x ? -1 : 1; a.x += s*push; b.x -= s*push; }
   }
   runDelayed();
+  if (G.player && G.player.alive()) for (const u of G.units) if (u.recruit && Math.abs(u.x - G.player.x) < 64 && Math.abs(u.z - G.player.z) < 34){
+    u.recruit = false; u.team = 0; u.lives = 3; u.inv = 30; floatText(u, 'Joined! ♥×3', '#7dffb8'); SFX.coin(); ring(u.x, sy(u) - 40, '#7dffb8'); addMsg(`A <a>${u.name}</a> joined your team.`); }
   for (const e of G.echoes){ if (--e.t <= 0 && e.o.hittable()){ applyHit(e.o, e.dir, {...e.a, normal:false, dmg:e.a.dmg*.6, kd:false, launch:-3}, e.src);
     if (e.fx === 'drill') drillFx(e.o); else if (e.fx === 'elem'){ elemFx(e.o, 0); elemFx(e.o, 1); } else particles.push({x:e.o.x - e.dir*30, y:sy(e.o) - e.o.h*.55, life:12, max:12, col:'#ffe27a', kind:'palm', face:e.dir}); } }
   G.echoes = G.echoes.filter(e => e.t > 0);
@@ -1830,6 +1884,9 @@ function stepFightInner(){
       u.hp = Math.round(u.maxhp*G.revive); u.hpShow = u.hp; G.revive = 0; u.deadT = 0; u.set('getup'); floatText(u, 'Second Wind!', '#7dffb8'); SFX.heal();
       for (let i=0;i<16;i++) particles.push({x:u.x + rnd(-24,24), y:sy(u) - rnd(0, u.h), vx:0, vy:-rnd(.6,2), life:40, max:40, col:'#7dffb8', kind:'plus'}); continue; }
     if (u.dead || u.hp > 0 || u.state !== 'lying' || u.deadT < 60) continue;
+    if (u.team === 0 && SOLDIER[u.kind] && u.lives > 1){
+      u.lives--; const p = G.player && G.player.alive() ? G.player : u; u.hp = u.maxhp; u.hpShow = u.hp; u.deadT = 0; u.x = p.x - (p.face||1)*60; u.z = p.z; u.y = 0; u.set('idle'); u.inv = 90;
+      floatText(u, `♥×${u.lives} left`, '#7dffb8'); smoke(u.x, u.z, 8); continue; }
     u.dead = true;
     if (G.mode === 'team'){ u.isPlayer = false; u.isP2 = false; G.lost += u.team === 0 ? 1 : 0; teamNext(u.team); continue; }
     if (u.isP2){ u.isP2 = false; const mate = G.units.find(v => v !== u && v.team === 1 && v.kind === 'hero' && !v.summon && v.alive()); if (mate) mate.isP2 = true; }
@@ -1900,7 +1957,7 @@ function missionTick(){
       const Zs = G.M.zones[G.zone];
       if (G.wave < Zs.length - 1){ G.wave++; G.pt = 0; G.phase = 'between'; }
       else if (G.zone < G.M.zones.length - 1){
-        if (!G.go){ G.go = true; G.bounds.r = (G.zone+2)*G.ZW; SFX.go(); }
+        if (!G.go){ G.go = true; G.bounds.r = (G.zone+2)*G.ZW; SFX.go(); addRecruits(1 + (Math.random() < .5 ? 1 : 0), (G.zone+1)*G.ZW - 120); addMsg('Soldiers are waiting ahead. Walk up to them to <a>recruit</a> them.'); }
         if (p && p.x > (G.zone+1)*G.ZW + 120){ G.zone++; G.wave = 0; G.go = false; G.bounds.l = G.zone*G.ZW; G.bounds.r = (G.zone+1)*G.ZW; for (const u of G.units) if (u.team === 0 && u.x < G.bounds.l + 30) u.x = G.bounds.l + 30 + rnd(0,40); spawnWave(); }
       } else { G.phase = 'win'; G.pt = 0; SFX.win(); for (const u of G.units) if (u.alive() && u.kind === 'hero') u.set('win'); }
     }
@@ -2028,7 +2085,7 @@ function drawTeamHUD(){
 function drawTeamSetup(){
   menuStart(.55);
   const T = S.tm;
-  topBar('Team Versus · 4-hero relay', () => { S.screen = 'missions'; });
+  topBar('Team Versus · 4-hero relay', () => { S.screen = 'modes'; });
   for (const side of [0, 1]){
     const x0 = side ? 500 : 30, team = side ? T.b : T.a;
     panel(x0, 50, 430, 196, side ? (T.cpu ? 'Red Team (Computer)' : 'Red Team (Player 2)') : 'Blue Team (Player 1)');
@@ -2090,13 +2147,19 @@ function drawVersusHUD(){
   if (G.phase === 'intro') banner(G.pt < 60 ? 'Round ' + G.round : 'Fight!', G.pt < 60 && G.round === 3 ? 'Final round' : '', G.pt < 60 ? '#ffd84a' : '#ff6a3a');
   if (G.phase === 'ko' && G.pt < 150) banner(G.timer <= 0 ? 'Time!' : 'K.O.!', G.rw >= 0 && G.pt > 70 ? `${G.vs[G.rw].name} wins the round` : (G.rw < 0 && G.pt > 70 ? 'Draw' : ''), '#ff5a3a');
 }
+function storyNode(){ return G && G.story ? STORY[G.story.ch].steps[G.story.i] : null; }
 function finishGame(won){
+  if (G.story && !G.storyDone){ G.storyDone = true; const {ch, i} = G.story;
+    if (won && SAVE.story.c[ch] === i) SAVE.story.c[ch] = i + 1;
+    G.storyCards = won && G.mode !== 'mission' ? rollCards(1, .4) : [];
+    persist();
+    if (G.mode !== 'mission'){ G.result = { won, story:true }; S.screen = 'result'; touchEl.hidden = true; $('cmd').hidden = false; resultT = 0; return; } }
   if (G.online === 'host') netSend('ctl', {t:'end', won, wins:G.wins, mode:G.mode, rw:G.rw});
   if (G.mode === 'versus'){ G.result = { won, vs:true, winner: G.vs[G.wins[0] >= 2 ? 0 : 1] }; S.screen = 'result'; touchEl.hidden = true; $('cmd').hidden = false; return; }
   if (G.mode === 'team'){ G.result = { won, team:true }; S.screen = 'result'; touchEl.hidden = true; $('cmd').hidden = false; return; }
   const stars = won ? Math.max(1, 3 - (G.mode === 'battle' ? Math.floor(G.lost/3) : G.lost)) : 0;
   const before = totalStars();
-  if (won){ if (G.mode === 'battle') SAVE.bstars = Math.max(SAVE.bstars||0, stars); else SAVE.stars[G.mi] = Math.max(SAVE.stars[G.mi]||0, stars); }
+  if (won && !G.story){ if (G.mode === 'battle') SAVE.bstars = Math.max(SAVE.bstars||0, stars); else SAVE.stars[G.mi] = Math.max(SAVE.stars[G.mi]||0, stars); }
   const gain = Math.round(((won ? 120 : 50) + G.kos*4) * (1 + (G.xpMul||0))), ups = [];
   for (const id of SAVE.team.filter(Boolean)){
     const b = lvOf(id); SAVE.xp[id] = (SAVE.xp[id]||0) + Math.round(G.usedHeroes.has(id) ? gain : gain*.4); const a = lvOf(id);
@@ -2290,7 +2353,8 @@ function drawTitle(){
   const loading = atlasLoaded < atlasTotal;
   const msg = loading ? `Loading fighters… ${Math.round(atlasLoaded/atlasTotal*100)}%` : isTouch ? 'Tap to start' : 'Press Enter to start';
   ctx.font = '900 20px ' + UIF; ctx.fillStyle = (menuT>>5)%2 ? '#ffe27a' : '#fff'; ctx.strokeText(msg, 480, 248); ctx.fillText(msg, 480, 248);
-  if (!loading) hot.push({x:0, y:0, w:W, h:H, act:() => { S.screen = 'missions'; SFX.menu(); }});
+  if (!loading) hot.push({x:0, y:0, w:W, h:H, act:() => { S.screen = 'modes'; SFX.menu(); }});
+  fsButton(20, 14);
   gear();
   menuEnd();
   if (isTouch && innerHeight > innerWidth){ ctx.fillStyle = 'rgba(0,0,0,.75)'; ctx.fillRect(0, 270, W, 50); ctx.fillStyle = '#fff'; ctx.font = '900 18px ' + UIF; ctx.textAlign = 'center'; ctx.fillText('Turn your phone sideways to play full screen', W/2, 302); }
@@ -2308,7 +2372,7 @@ function wrap(text, cx, y, maxW, lh, font, col){
 }
 function drawMissions(){
   menuStart(.45);
-  topBar('Choose a Mission', () => { S.screen = 'title'; });
+  topBar('Choose a Mission', () => { S.screen = 'modes'; });
   const cw = 170, gap = 14, x0 = (960 - (cw*5 + gap*4))/2;
   MISSIONS.forEach((M, i) => {
     const x = x0 + i*(cw+gap), y = 58, h = 300, sel = S.mi === i && S.mode === 'mission', yy = y + (sel ? -5 : 0);
@@ -2354,12 +2418,14 @@ function drawMissions(){
 const SLOT_NAMES = ['Player','Teammate','Backup','Backup','Backup'];
 function drawTeam(){
   menuStart(.5);
-  const battle = S.mode === 'battle', M = battle ? null : MISSIONS[S.mi];
+  const story = S.mode === 'story', node = story ? STORY[S.sch].steps[S.sst] : null;
+  const battle = S.mode === 'battle' || (node && node.type === 'battle'), M = battle ? null : story ? (node.type === 'mission' ? storyMission(node) : null) : MISSIONS[S.mi];
   panel(30, 16, 900, 112);
-  const bg = IMG[battle ? 'bg_canyon' : STAGES[M.stage].bg];
+  const bg = IMG[story ? STAGES[(M && M.stage) || node.stage].bg : battle ? 'bg_canyon' : STAGES[M.stage].bg];
   if (ok(bg)){ ctx.save(); ctx.beginPath(); ctx.roundRect(44, 30, 190, 84, 6); ctx.clip(); ctx.drawImage(bg, bg.naturalWidth*.2, bg.naturalHeight*.2, bg.naturalHeight*1.6, bg.naturalHeight*.75, 44, 30, 190, 84); ctx.restore(); }
-  ctx.fillStyle = '#3b1206'; ctx.font = '28px ' + DISP; ctx.textAlign = 'center'; ctx.fillText(battle ? 'Battle Mode' : `Mission ${S.mi+1}. ${M.name}`, 580, 58);
-  wrap(battle ? 'Your Player and Teammate lead the army. Stand near a gold mine to capture it, spend gold to hire soldiers, and destroy the bandit fort. Beaten heroes return to your fort after 6 seconds.' : M.desc + ' You have 2 heroes on the field and 3 heroes as backup.', 580, 84, 600, 18, '700 14px ' + UIF, '#4a2410');
+  ctx.fillStyle = '#3b1206'; ctx.font = '28px ' + DISP; ctx.textAlign = 'center'; ctx.fillText(story ? `Story · ${node.title}` : battle ? 'Battle Mode' : `Mission ${S.mi+1}. ${M.name}`, 580, 58);
+  if (story) wrap(node.type === 'mission' || node.type === 'battle' ? node.text : `Your first ${node.type === 'versus' ? 'hero fights' : node.n + ' heroes fight'} in order. Put your strongest heroes in the first slots.`, 580, 84, 600, 18, '700 14px ' + UIF, '#4a2410');
+  else wrap(battle ? 'Your Player and Teammate lead the army. Stand near a gold mine to capture it, spend gold to hire soldiers, and destroy the bandit fort. Beaten heroes return to your fort after 6 seconds.' : M.desc + ' You have 2 heroes on the field and 3 heroes as backup.', 580, 84, 600, 18, '700 14px ' + UIF, '#4a2410');
   panel(30, 142, 680, 290, 'Your Heroes');
   const sw = 122, x0 = 30 + (680 - sw*5 - 10*4)/2, slots = battle ? 2 : 5;
   for (let i=0;i<5;i++){
@@ -2384,8 +2450,8 @@ function drawTeam(){
   else for (const k of eq){ const c = cardOf(k); ctx.font = '800 12px ' + UIF; ctx.fillStyle = '#3b1206'; ctx.textAlign = 'left'; ctx.fillText(`• ${c.name} (${TIER[c.t]})`, 744, yy); yy += 17; }
   btn(752, 372, 152, 40, 'Open Deck', false, () => { S.deckSlot = 0; S.deckFrom = 'team'; S.screen = 'deck'; SFX.menu(); }, true, '#8a4ab0');
   ctx.fillStyle = '#6a3418'; ctx.font = '700 11px ' + UIF; ctx.textAlign = 'center'; ctx.fillText(`${Object.values(SAVE.deck).reduce((a,b)=>a+b,0)} cards in your deck`, 828, 424);
-  btn(360, 452, 240, 62, 'FIGHT!', true, () => { if (!SAVE.team[0]) return; SFX.go(); if (battle){ if (!SAVE.team[1]) SAVE.team[1] = HERO_IDS.find(h => h !== SAVE.team[0]); startBattle(); } else startMission(S.mi); });
-  btn(30, 466, 120, 40, '‹ Back', false, () => { S.screen = 'missions'; }, true, '#7a5a2a');
+  btn(360, 452, 240, 62, 'FIGHT!', true, () => { if (!SAVE.team[0]) return; SFX.go(); if (story){ storyStart(S.sch, S.sst); return; } if (battle){ if (!SAVE.team[1]) SAVE.team[1] = HERO_IDS.find(h => h !== SAVE.team[0]); startBattle(); } else startMission(S.mi); });
+  btn(30, 466, 120, 40, '‹ Back', false, () => { S.screen = story ? 'scene' : 'missions'; }, true, '#7a5a2a');
   gear();
   menuEnd();
 }
@@ -2425,7 +2491,7 @@ function drawRoster(){
 function drawVersusSetup(){
   menuStart(.55);
   const V = S.vs;
-  topBar('Versus', () => { S.screen = 'missions'; });
+  topBar('Versus', () => { S.screen = 'modes'; });
   for (const [side, id] of [[0, V.p1], [1, V.p2]]){
     const cx = side ? 790 : 170, on = V.side === side;
     panel(cx - 130, 54, 260, 236);
@@ -2542,6 +2608,7 @@ function drawResult(){
   ctx.fillStyle = 'rgba(20,10,0,.6)'; ctx.fillRect(0,0,W,H);
   ctx.save(); ctx.translate(MX, 0); HOTX = MX;
   const r = G.result, battle = G.mode === 'battle';
+  if (G.story){ drawStoryResult(r); ctx.restore(); HOTX = 0; return; }
   if (G.online && (r.vs || r.team)){
     const meWon = G.online === 'host' ? r.won : !r.won;
     panel(220, 60, 520, 400, meWon ? 'You Win!' : 'You Lose');
@@ -2593,7 +2660,9 @@ function drawPause(){
   panel(310, 90, 340, 360, 'Paused');
   btn(360, 150, 240, 46, 'Resume', true, () => { S.paused = false; }, true);
   btn(360, 206, 240, 46, 'Settings', false, openSettings, true, '#5a6a7a');
+  fsButton(372, 400);
   if (G.online){ btn(360, 262, 240, 46, 'Leave match', false, () => { S.paused = false; netLeave('You left the match.'); }, true, '#7a2e14'); ctx.fillStyle = '#4a2410'; ctx.font = '800 12px ' + UIF; ctx.textAlign = 'center'; ctx.fillText('Online match keeps running while this menu is open.', 480, 400); ctx.restore(); HOTX = 0; return; }
+  if (G.story){ btn(360, 262, 240, 46, 'Restart', false, () => storyStart(G.story.ch, G.story.i), true); btn(360, 318, 240, 46, 'Quit to chapter', false, () => { S.paused = false; S.screen = 'chapter'; touchEl.hidden = true; }, true, '#7a5a2a'); ctx.restore(); HOTX = 0; return; }
   btn(360, 262, 240, 46, 'Restart', false, () => G.mode === 'team' ? startTeam() : G.mode === 'versus' ? startVersus() : G.mode === 'battle' ? startBattle() : startMission(G.mi), true);
   btn(360, 318, 240, 46, 'Quit', false, () => { S.paused = false; S.screen = 'missions'; touchEl.hidden = true; }, true, '#7a5a2a');
   ctx.restore(); HOTX = 0;
@@ -2603,9 +2672,13 @@ function menuKeys(){
   if (!$('settings').hidden) return;
   const okk = pr.some(k => ['Enter','Space','KeyJ'].includes(k)), back = pr.includes('Escape');
   const L = pr.some(k => ['KeyA','ArrowLeft'].includes(k)), R = pr.some(k => ['KeyD','ArrowRight'].includes(k));
-  if (S.screen === 'title' && okk && atlasLoaded >= atlasTotal){ S.screen = 'missions'; SFX.menu(); }
-  else if (S.screen === 'missions'){ if (L){ S.mode = 'mission'; S.mi = (S.mi+4)%5; } if (R){ S.mode = 'mission'; S.mi = (S.mi+1)%5; } if (L||R) SFX.menu(); if (okk) S.screen = 'team'; if (back) S.screen = 'title'; }
-  else if (S.screen === 'team'){ if (okk){ if (S.mode === 'battle') startBattle(); else startMission(S.mi); } if (back) S.screen = 'missions'; }
+  if (S.screen === 'title' && okk && atlasLoaded >= atlasTotal){ S.screen = 'modes'; SFX.menu(); }
+  else if (S.screen === 'modes'){ if (back) S.screen = 'title'; }
+  else if (S.screen === 'story'){ if (back) S.screen = 'modes'; }
+  else if (S.screen === 'chapter'){ if (back) S.screen = 'story'; }
+  else if (S.screen === 'scene'){ if (back) S.screen = 'chapter'; if (okk) storyStart(S.sch, S.sst); }
+  else if (S.screen === 'missions'){ if (L){ S.mode = 'mission'; S.mi = (S.mi+4)%5; } if (R){ S.mode = 'mission'; S.mi = (S.mi+1)%5; } if (L||R) SFX.menu(); if (okk) S.screen = 'team'; if (back) S.screen = 'modes'; }
+  else if (S.screen === 'team'){ if (okk){ if (S.mode === 'story') storyStart(S.sch, S.sst); else if (S.mode === 'battle') startBattle(); else startMission(S.mi); } if (back) S.screen = S.mode === 'story' ? 'scene' : 'missions'; }
   else if (S.screen === 'roster'){ const n = HERO_IDS.length, i = HERO_IDS.indexOf(S.rosterSel); if (L) S.rosterSel = HERO_IDS[(i+n-1)%n]; if (R) S.rosterSel = HERO_IDS[(i+1)%n]; if (okk) chooseHero(); if (back) S.screen = 'team'; }
   else if (S.screen === 'versus'){ const n = HERO_IDS.length, key = S.vs.side ? 'p2' : 'p1', i = HERO_IDS.indexOf(S.vs[key]); if (L) S.vs[key] = HERO_IDS[(i+n-1)%n]; if (R) S.vs[key] = HERO_IDS[(i+1)%n]; if (L||R) SFX.menu(); if (pr.includes('Tab') || pr.includes('KeyQ')) S.vs.side ^= 1; if (okk) startVersus(); if (back) S.screen = 'missions'; }
   else if (S.screen === 'online'){ if (back){ netLeave(); S.screen = 'missions'; } if (okk && NET.role === 'host' && NET.connected) netStartMatch(); }
@@ -2620,6 +2693,164 @@ cv.addEventListener('pointerdown', e => {
   const r = cv.getBoundingClientRect(), x = (e.clientX - r.left)/r.width*W, y = (e.clientY - r.top)/r.height*H;
   for (let i = hot.length-1; i >= 0; i--){ const h = hot[i]; if (x>=h.x && x<=h.x+h.w && y>=h.y && y<=h.y+h.h){ h.act(); break; } }
 });
+
+/* ================= modes / story / fullscreen ================= */
+const IS_IOS = /iP(hone|od|ad)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const IS_STANDALONE = () => navigator.standalone || matchMedia('(display-mode: fullscreen)').matches || matchMedia('(display-mode: standalone)').matches;
+const isFull = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+function goFull(){
+  const can = document.fullscreenEnabled || document.webkitFullscreenEnabled;
+  if (can) toggleFullscreen(); else if (!IS_STANDALONE()) S.fsTip = true;
+}
+function fsButton(x, y){
+  if (IS_STANDALONE() && !isFull() && !(document.fullscreenEnabled || document.webkitFullscreenEnabled)) return;
+  btn(x, y, 216, 38, isFull() ? '⤡ Exit full screen' : '⛶ Full screen (landscape)', false, goFull, true, '#2a6a9a');
+}
+function drawFsTip(){
+  if (!S.fsTip) return;
+  ctx.fillStyle = 'rgba(0,0,0,.7)'; ctx.fillRect(0, 0, W, H);
+  ctx.save(); ctx.translate(MX, 0); HOTX = MX;
+  panel(200, 90, 560, 330, 'Full screen on iPhone');
+  wrap('iPhone Safari always keeps its address bar. To play full screen in landscape with no bars:', 480, 150, 480, 20, '800 15px ' + UIF, '#4a2410');
+  ['1. Tap the Share button (square with an arrow).', '2. Tap "Add to Home Screen", then "Add".', '3. Open Storm Clash from the new icon on your home screen.'].forEach((t, i) => { ctx.textAlign = 'left'; ctx.font = '900 15px ' + UIF; ctx.fillStyle = '#22608f'; ctx.fillText(t, 250, 222 + i*30); });
+  wrap('It then runs full screen like an app, and your progress is kept on this phone.', 480, 330, 480, 18, '700 13px ' + UIF, '#6a3418');
+  btn(390, 360, 180, 44, 'Got it', true, () => { S.fsTip = false; }, true);
+  ctx.restore(); HOTX = 0;
+}
+function storyMission(node){ return node.M || MISSIONS[node.mi]; }
+const storyArt = {};
+function loadStoryArt(){
+  for (const ch of STORY){ for (const k of [ch.cover, ...ch.steps.map(s => s.art)]) if (!storyArt[k]){ const im = new Image(); im.src = k + '.webp'; storyArt[k] = im; } }
+}
+function drawArt(key, x, y, w, h, r){
+  const im = storyArt[key]; ctx.save(); ctx.beginPath(); ctx.roundRect(x, y, w, h, r||8); ctx.clip();
+  if (im && ok(im)){ const s = Math.max(w/im.naturalWidth, h/im.naturalHeight), dw = im.naturalWidth*s, dh = im.naturalHeight*s; ctx.drawImage(im, x + (w - dw)/2, y + (h - dh)/2, dw, dh); }
+  else { const g = ctx.createLinearGradient(0, y, 0, y + h); g.addColorStop(0, '#5a3a8a'); g.addColorStop(1, '#2a1240'); ctx.fillStyle = g; ctx.fillRect(x, y, w, h); }
+  ctx.restore();
+}
+function drawModes(){
+  menuStart(.5);
+  loadStoryArt();
+  topBar('Choose a Mode', () => { S.screen = 'title'; });
+  const cards = [
+    ['Story Mode', 'Chapters of missions, duels and team battles', () => { S.screen = 'story'; }, 'story'],
+    ['Missions', 'Clear bandit waves stage by stage', () => { S.mode = 'mission'; S.screen = 'missions'; }, 'mission'],
+    ['Battle Mode', 'Gold mines, troops and forts', () => { S.mode = 'battle'; S.screen = 'team'; }, 'battle'],
+    ['Versus', '1 on 1 against the computer or a friend', () => { S.screen = 'versus'; }, 'versus'],
+    ['Team Fight', '4-hero relay, 1 on 1 at a time', () => { S.screen = 'teamvs'; }, 'team'],
+    ['Online', 'Play a friend over the internet', () => { S.screen = 'online'; NET.msg = ''; }, 'online'],
+  ];
+  cards.forEach(([t, d, act, kind], i) => {
+    const col = i % 3, row = Math.floor(i/3), x = 40 + col*300, y = 54 + row*204, w = 280, h = 190;
+    panel(x, y, w, h);
+    const ax = x + 10, ay = y + 10, aw = w - 20, ah = 108;
+    if (kind === 'story') drawArt('story_cover1', ax, ay, aw, ah);
+    else { const bg = IMG[{mission:'bg_forest', battle:'bg_canyon', versus:'bg_temple', team:'bg_snow', online:'bg_city'}[kind]]; if (ok(bg)){ ctx.save(); ctx.beginPath(); ctx.roundRect(ax, ay, aw, ah, 6); ctx.clip(); ctx.drawImage(bg, bg.naturalWidth*.25, bg.naturalHeight*.2, bg.naturalHeight*1.5, bg.naturalHeight*.62, ax, ay, aw, ah); ctx.restore(); } }
+    const spr = { mission:[['kai','atk1'],['mei','idle']], battle:[['knight','idle'],['rajan','win']], versus:[['samurai','atk1'],['ninja','idle', true]], team:[['sci','idle'],['lord','idle', true]], online:[['zara','win'],['hong','idle', true]] }[kind];
+    if (spr) spr.forEach(([id, f, flip], k) => { ctx.save(); ctx.translate(ax + 70 + k*130, 0); if (flip) ctx.scale(-1, 1); heroSprite(id, f, 0, ay + ah - 4, 88); ctx.restore(); });
+    if (kind === 'battle' && ok(IMG.fort_b)){ const m = META.fort_b; ctx.drawImage(IMG.fort_b, ax + aw/2 - 30, ay + ah - 74, 70*m.w/m.h, 70); }
+    if (kind === 'story'){ ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(ax, ay + ah - 22, aw, 22); ctx.fillStyle = '#ffd84a'; ctx.font = '900 12px ' + UIF; ctx.textAlign = 'center'; ctx.fillText(`Chapter 1 ${SAVE.story.c[0]}/10 · Chapter 2 ${SAVE.story.c[1]}/10`, ax + aw/2, ay + ah - 7); }
+    ctx.textAlign = 'center'; ctx.fillStyle = '#3b1206'; ctx.font = '24px ' + DISP; ctx.fillText(t, x + w/2, y + 148);
+    ctx.font = '700 12px ' + UIF; ctx.fillStyle = '#4a2410'; ctx.fillText(d, x + w/2, y + 170);
+    hot.push({x:x+HOTX, y, w, h, act:() => { SFX.menu(); act(); }});
+  });
+  fsButton(40, 470);
+  btn(270, 470, 140, 38, 'Card Deck', false, () => { S.deckFrom = 'modes'; S.screen = 'deck'; }, true, '#8a4ab0');
+  btn(420, 470, 140, 38, 'How to Play', false, () => { S.screen = 'help'; }, true, '#7a5a2a');
+  gear();
+  menuEnd();
+}
+function drawStory(){
+  menuStart(.55); loadStoryArt();
+  topBar('Story Mode', () => { S.screen = 'modes'; });
+  STORY.forEach((ch, c) => {
+    const x = 40 + c*450, y = 56, w = 430, h = 450, done = SAVE.story.c[c];
+    panel(x, y, w, h);
+    drawArt(ch.cover, x + 12, y + 12, w - 24, 230);
+    ctx.textAlign = 'center'; ctx.fillStyle = '#7a3a14'; ctx.font = '900 13px ' + UIF; ctx.fillText(`CHAPTER ${c+1}`, x + w/2, y + 268);
+    ctx.fillStyle = '#3b1206'; ctx.font = '26px ' + DISP; ctx.fillText(ch.name, x + w/2, y + 298);
+    wrap(ch.intro, x + w/2, y + 322, w - 50, 17, '700 13px ' + UIF, '#4a2410');
+    const bw = w - 60; ctx.fillStyle = 'rgba(90,40,10,.2)'; ctx.fillRect(x + 30, y + 384, bw, 10); ctx.fillStyle = '#ffc23a'; ctx.fillRect(x + 30, y + 384, bw*done/10, 10);
+    ctx.fillStyle = '#6a3418'; ctx.font = '800 12px ' + UIF; ctx.fillText(done >= 10 ? 'Chapter complete!' : `${done} of 10 stages cleared`, x + w/2, y + 412);
+    btn(x + w/2 - 90, y + 418, 180, 26, done >= 10 ? 'Replay' : done ? 'Continue' : 'Start', true, () => { S.sch = c; S.screen = 'chapter'; SFX.menu(); }, true);
+    hot.push({x:x+HOTX, y, w, h:400, act:() => { S.sch = c; S.screen = 'chapter'; SFX.menu(); }});
+  });
+  menuEnd();
+}
+function drawChapter(){
+  menuStart(.6); loadStoryArt();
+  const c = S.sch||0, ch = STORY[c], done = SAVE.story.c[c];
+  topBar(`Chapter ${c+1} · ${ch.name}`, () => { S.screen = 'story'; });
+  drawArt(ch.cover, 20, 50, 920, 470, 12); ctx.fillStyle = 'rgba(20,8,0,.55)'; ctx.fillRect(20, 50, 920, 470);
+  const pts = ch.steps.map((s, i) => [100 + (i % 5)*190, i < 5 ? 190 : 390]);
+  ctx.strokeStyle = 'rgba(255,220,140,.6)'; ctx.lineWidth = 6; ctx.setLineDash([12, 10]); ctx.beginPath(); pts.forEach(([x, y], i) => { const px = i < 5 ? x : 100 + (9 - i)*190; if (!i) ctx.moveTo(x, y); else ctx.lineTo(i < 5 ? x : px, y); }); ctx.stroke(); ctx.setLineDash([]);
+  ch.steps.forEach((s, i) => {
+    const x = i < 5 ? 100 + i*190 : 100 + (9 - i)*190, y = i < 5 ? 190 : 390, open = i <= done, cur = i === Math.min(done, 9) && done < 10, r = cur ? 50 + Math.sin(menuT*.12)*3 : 44;
+    ctx.save();
+    ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fillStyle = !open ? '#3a3a44' : i < done ? '#2f8a5a' : s.type === 'mission' ? '#c0602a' : s.type === 'battle' ? '#8a4ab0' : '#2a6ab0'; ctx.fill();
+    ctx.lineWidth = cur ? 5 : 3; ctx.strokeStyle = cur ? '#ffe27a' : '#fff3d0'; ctx.stroke();
+    ctx.fillStyle = open ? '#fff' : '#888'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = (s.type === 'team' || s.type === 'versus' ? '900 20px ' : '900 30px ') + UIF; ctx.fillText(s.type === 'team' ? `${s.n}v${s.n}` : s.type === 'versus' ? '1v1' : STEP_ICON[s.type], x, y - 4);
+    ctx.textBaseline = 'alphabetic'; ctx.font = '900 11px ' + UIF; ctx.fillText(i < done ? '✔ CLEAR' : open ? stepLabel(s).toUpperCase() : 'LOCKED', x, y + 26);
+    ctx.font = '800 12px ' + UIF; ctx.fillStyle = open ? '#fff6c8' : '#999'; ctx.fillText(`${i+1}. ${s.title.replace(/^(Duel|Battle|\d vs \d): /, '')}`, x, y + r + 18);
+    ctx.restore();
+    if (open) hot.push({x:x - 50 + HOTX, y:y - 50, w:100, h:100, act:() => { S.sst = i; S.screen = 'scene'; SFX.menu(); }});
+  });
+  ctx.textAlign = 'center'; ctx.font = '800 13px ' + UIF; ctx.fillStyle = '#fff';
+  ctx.fillText(done >= 10 ? 'Chapter complete! Replay any stage.' : 'Tap the glowing stage to continue. Mission → duel → mission → battle → … → 4 vs 4 finale.', 480, 508);
+  menuEnd();
+}
+function drawScene(){
+  menuStart(.7); loadStoryArt();
+  const c = S.sch||0, i = S.sst||0, s = STORY[c].steps[i];
+  topBar(`Chapter ${c+1} · Stage ${i+1} of 10`, () => { S.screen = 'chapter'; });
+  drawArt(s.art, 20, 50, 560, 316, 12);
+  ctx.strokeStyle = '#ffe6a8'; ctx.lineWidth = 3; ctx.beginPath(); ctx.roundRect(20, 50, 560, 316, 12); ctx.stroke();
+  panel(596, 50, 344, 470);
+  ctx.textAlign = 'center'; ctx.fillStyle = '#7a3a14'; ctx.font = '900 13px ' + UIF; ctx.fillText(stepLabel(s).toUpperCase(), 768, 84);
+  ctx.fillStyle = '#3b1206'; ctx.font = '22px ' + DISP; ctx.fillText(s.title, 768, 112);
+  wrap(s.text, 768, 140, 300, 18, '700 14px ' + UIF, '#4a2410');
+  // lineup
+  const mine = s.type === 'versus' ? [SAVE.team[0]] : s.type === 'team' ? SAVE.team.slice(0, s.n) : SAVE.team.slice(0, s.type === 'battle' ? 2 : 5);
+  const foes = s.type === 'versus' ? [s.foe] : s.type === 'team' ? s.foes : null;
+  panel(20, 378, 560, 142);
+  ctx.textAlign = 'left'; ctx.fillStyle = '#22608f'; ctx.font = '900 12px ' + UIF; ctx.fillText('YOUR HEROES', 36, 400);
+  mine.filter(Boolean).forEach((id, k) => heroSprite(id, 'idle', 60 + k*52, 508, 82));
+  if (foes){ ctx.textAlign = 'right'; ctx.fillStyle = '#c0392b'; ctx.fillText('OPPONENTS', 564, 400); foes.forEach((id, k) => { ctx.save(); ctx.translate(540 - k*56, 0); ctx.scale(-1, 1); heroSprite(id, 'idle', 0, 508, 82); ctx.restore(); }); }
+  else { ctx.textAlign = 'right'; ctx.fillStyle = '#c0392b'; ctx.fillText(s.type === 'battle' ? 'ENEMY FORT' : 'BANDIT WAVES', 564, 400); if (ok(IMG.spear_idle)){ const m = META.spear_idle; for (let k=0;k<3;k++) ctx.drawImage(IMG.spear_idle, 470 - k*40, 508 - 76, 76*m.w/m.h, 76); } }
+  btn(640, 404, 256, 52, 'FIGHT!', true, () => { SFX.go(); storyStart(c, i); });
+  btn(640, 464, 124, 38, 'Change Team', false, () => { S.mode = 'story'; S.screen = 'team'; }, true, '#2a6a9a');
+  btn(772, 464, 124, 38, 'Map', false, () => { S.screen = 'chapter'; }, true, '#7a5a2a');
+  menuEnd();
+}
+function storyStart(c, i){
+  const s = STORY[c].steps[i], team = SAVE.team.filter(Boolean);
+  while (team.length < 4) team.push(HERO_IDS.find(h => !team.includes(h)));
+  S.paused = false;
+  if (s.type === 'mission') startMission(storyMission(s));
+  else if (s.type === 'battle'){ if (!SAVE.team[1]) SAVE.team[1] = team[1]; startBattle(s.stage); }
+  else if (s.type === 'versus'){ Object.assign(S.vs, { p1:team[0], p2:s.foe, cpu:true, lvl:s.lvl, stage:s.stage }); startVersus(); }
+  else { Object.assign(S.tm, { a:team.slice(0, s.n), b:s.foes.slice(), cpu:true, lvl:s.lvl, stage:s.stage }); startTeam(); }
+  G.story = { ch:c, i };
+}
+function drawStoryResult(r){
+  const s = STORY[G.story.ch].steps[G.story.i], won = r.won, last = G.story.i >= 9;
+  panel(200, 50, 560, 430, won ? (last ? 'Chapter Complete!' : 'Stage Clear!') : 'Defeated');
+  drawArt(s.art, 230, 96, 500, 150, 10);
+  ctx.textAlign = 'center'; ctx.fillStyle = '#3b1206'; ctx.font = '20px ' + DISP; ctx.fillText(s.title, 480, 276);
+  if (r.stars != null && won) for (let k=0;k<3;k++) star(440 + k*40, 302, 14, k < r.stars);
+  const cards = (r.newCards && r.newCards.length ? r.newCards : G.storyCards) || [];
+  if (won && cards.length){ ctx.fillStyle = '#b4441a'; ctx.font = '900 13px ' + UIF; ctx.fillText('New buff cards!', 480, 328); const cw = 50, gap = 12, x0 = 480 - (cards.length*cw + (cards.length-1)*gap)/2; cards.forEach((k, j) => drawCard(x0 + j*(cw+gap), 336, cw, 70, k, 0, false, Math.min(1, Math.max(0, (resultT - 20 - j*14)/14)))); }
+  else if (!won){ wrap('Change your team or add buff cards from your deck, then try again.', 480, 340, 440, 18, '800 14px ' + UIF, '#4a2410'); }
+  const next = won && !last;
+  btn(230, 420, 150, 46, 'Retry', false, () => storyStart(G.story.ch, G.story.i), true, '#7a5a2a');
+  btn(390, 420, 150, 46, 'Map', false, () => { S.sch = G.story.ch; S.screen = 'chapter'; }, true, '#2a6a9a');
+  btn(550, 420, 180, 46, next ? 'Next stage ›' : last && won ? (G.story.ch < STORY.length - 1 ? 'Chapter 2 ›' : 'Story menu') : 'Change team', true, () => {
+    if (next){ S.sch = G.story.ch; S.sst = G.story.i + 1; S.screen = 'scene'; }
+    else if (last && won){ if (G.story.ch < STORY.length - 1){ S.sch = G.story.ch + 1; S.screen = 'chapter'; } else S.screen = 'story'; }
+    else { S.sch = G.story.ch; S.sst = G.story.i; S.mode = 'story'; S.screen = 'team'; }
+  }, true);
+}
 
 /* ================= online (WebRTC via PeerJS) ================= */
 let ONLINE_START = null;
@@ -2872,13 +3103,20 @@ function frameInner(now){
     case 'versus': drawVersusSetup(); break;
     case 'teamvs': drawTeamSetup(); break;
     case 'deck': drawDeck(); break;
+    case 'modes': drawModes(); break;
+    case 'story': drawStory(); break;
+    case 'chapter': drawChapter(); break;
+    case 'scene': drawScene(); break;
     case 'online': drawOnline(); break;
     case 'fight': drawFight(); if (S.paused){ hot = []; drawPause(); } break;
     case 'result': drawResult(); break;
   }
+  if (S.fsTip){ hot = []; drawFsTip(); }
 }
 resize();
 (document.fonts ? Promise.race([document.fonts.load('20px "Lilita One"'), new Promise(r => setTimeout(r, 1500))]) : Promise.resolve()).then(() => requestAnimationFrame(frame));
 window.__SC = { NET, netHost, netJoin, netStartMatch, dbg:{ stepFight, SPEC, ULT, HEROES, MUL, startUlt, throwHeld, setNoPro: v => NOPRO = v, fx }, S, get G(){ return G; }, startMission, startBattle, startVersus, SAVE, hire, ANIM };
 })();
 </script>
+
+</html>
