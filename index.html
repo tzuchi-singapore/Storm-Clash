@@ -633,7 +633,11 @@ function applyHit(def, dir, a, src, hx, hy){
   let dmg = a.dmg * (src ? src.pow : 1) * def.tough * (MUL[a.sk] || 1);
   hx = hx ?? def.x - dir*14; hy = hy ?? sy(def) - def.h*.55;
   if (def.kind === 'fort'){
-    def.hp -= dmg*.5; def.flash = 4; sparks(hx, sy(def) - rnd(40,140), '#ffd27a', 6); SFX.hit(); if (def.hp <= 0){ def.hp = 0; G.fortDown = def.team === 0 ? 'lose' : 'win'; }
+    def.hp -= dmg; def.flash = 4; sparks(hx, sy(def) - rnd(40,140), '#ffd27a', 6); SFX.hit();
+    particles.push({x:def.x + rnd(-30,30), y:sy(def) - rnd(120,200), vx:0, vy:-1.2, life:36, max:36, col:'#ffe08a', kind:'dmg', txt:String(Math.round(dmg))});
+    if (def.hp <= 0 && !G.fortDown){ def.hp = 0; G.fortDown = def.team === 0 ? 'lose' : 'win'; shake = 18; flashScreen('#ffb070'); SFX.heavy();
+      for (let i=0;i<50;i++){ const a = rnd(0,6.28); particles.push({x:def.x + rnd(-60,60), y:sy(def) - rnd(20,220), vx:Math.cos(a)*rnd(2,7), vy:Math.sin(a)*rnd(2,7) - 2, life:rnd(30,60), max:60, col: i%3 ? '#ff8a3a' : '#ffe08a', kind:'fire'}); }
+      for (let i=0;i<20;i++) particles.push({x:def.x + rnd(-70,70), y:sy(def) - rnd(0,200), vx:rnd(-1,1), vy:-rnd(.5,2), life:60, max:60, col:'rgba(90,80,70,.8)', kind:'smoke', s:rnd(16,30)}); }
     return true;
   }
   const blocking = def.state === 'defend' && def.face === -dir && !a.unblock;
@@ -1516,9 +1520,10 @@ function drawBars(u){
   if (u.hp <= 0 || u.kind === 'mount') return;
   const gx = u.x - G.cam;
   if (u.kind === 'fort'){
-    const y = G.st.FT + u.z - 260, w = 140;
-    ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.fillRect(gx-w/2-2, y-2, w+4, 12);
-    ctx.fillStyle = u.team === 0 ? '#3d8bff' : '#e8343a'; ctx.fillRect(gx-w/2, y, w*u.hp/u.maxhp, 8); return;
+    const y = Math.max(96, G.st.FT + u.z - 262), w = 170;
+    ctx.fillStyle = 'rgba(0,0,0,.65)'; ctx.beginPath(); ctx.roundRect(gx-w/2-3, y-3, w+6, 18, 6); ctx.fill();
+    ctx.fillStyle = u.team === 0 ? '#3d8bff' : '#e8343a'; ctx.fillRect(gx-w/2, y, w*Math.max(0,u.hp)/u.maxhp, 12);
+    ctx.font = '900 11px ' + UIF; ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.fillText(`${u.team === 0 ? 'Your fort' : 'Bandit fort'}  ${Math.ceil(u.hp)}/${u.maxhp}`, gx, y + 10); return;
   }
   if (u.summon){ const gy = G.st.FT + u.z + 6, n = u.hitsLeft, pw = Math.min(8, 60/Math.max(1, n)); for (let i=0;i<n;i++){ ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(gx - n*pw/2 + i*pw, gy, pw-1, 5); ctx.fillStyle = u.team === 0 ? '#5ab0ff' : '#ff6a6a'; ctx.fillRect(gx - n*pw/2 + i*pw + 1, gy + 1, pw-3, 3); }
     if (u.lifeT > 0){ ctx.fillStyle = '#ffc23a'; ctx.fillRect(gx - 20, gy + 7, 40*u.lifeT/(u.id === 'golem' ? 1500 : 600), 2); } return; }
@@ -1820,8 +1825,8 @@ function startBattle(stageKey, teamOverride){
   G = baseG('battle', st, 1); Object.assign(G, { gold:[160,160], hireCool:60 }); setupCards();
   G.mapW = 3600; G.ZW = G.mapW; G.bounds = { l:0, r:G.mapW };
   fx.length = 0; particles.length = 0;
-  const f0 = new Unit({ kind:'fort', team:0, name:'Your fort', hp:4500, spd:0, pow:0, h:240, x:150, z:2 });
-  const f1 = new Unit({ kind:'fort', team:1, name:'Bandit fort', hp:4500, spd:0, pow:0, h:240, x:G.mapW-150, z:2 });
+  const f0 = new Unit({ kind:'fort', team:0, name:'Your fort', hp:1600, spd:0, pow:0, h:240, x:150, z:2 });
+  const f1 = new Unit({ kind:'fort', team:1, name:'Bandit fort', hp:1600, spd:0, pow:0, h:240, x:G.mapW-150, z:2 });
   G.forts = [f0, f1]; G.units.push(f0, f1);
   G.mines = [{x:G.mapW*.34, prog:0, owner:-1}, {x:G.mapW*.66, prog:0, owner:-1}];
   const team = teamOverride || SAVE.team;
@@ -1915,13 +1920,13 @@ function stepFightInner(){
       u.lives--; const p = G.player && G.player.alive() ? G.player : u; u.hp = u.maxhp; u.hpShow = u.hp; u.deadT = 0; u.x = p.x - (p.face||1)*60; u.z = p.z; u.y = 0; u.set('idle'); u.inv = 90;
       floatText(u, `♥×${u.lives} left`, '#7dffb8'); smoke(u.x, u.z, 8); continue; }
     u.dead = true;
-    if (G.mode === 'team'){ u.isPlayer = false; u.isP2 = false; G.lost += u.team === 0 ? 1 : 0; teamNext(u.team); continue; }
+    if (G.mode === 'team'){ const wp = u.isPlayer, w2 = u.isP2; u.isPlayer = false; u.isP2 = false; G.lost += u.team === 0 ? 1 : 0; teamNext(u.team, wp, w2); continue; }
     if (u.isP2){ u.isP2 = false; const mate = G.units.find(v => v !== u && v.team === 1 && v.kind === 'hero' && !v.summon && v.alive()); if (mate) mate.isP2 = true; }
     if (u.team === 1){
       G.kos++;
       if (u.kind === 'hero' || u.kind === 'boss') addMsg(`<e>${u.name}</e> is beaten.`);
       if (u.kind !== 'hero' && Math.random() < .14) G.items.push({kind: Math.random() < .6 ? 'bun' : 'tea', x:u.x, z:u.z, t:0});
-      if (G.mode === 'battle'){ G.gold[0] += u.kind === 'hero' ? 60 : 10; if (u.kind === 'hero') G.respawn.push({id:u.id, team:1, t:420}); }
+      if (G.mode === 'battle'){ G.gold[0] += u.kind === 'hero' ? 60 : 10; if (u.kind === 'hero'){ G.deaths = G.deaths || {}; const dk = '1:' + u.id, n = G.deaths[dk] = (G.deaths[dk]||0) + 1; G.respawn.push({id:u.id, team:1, t:(n >= 3 ? 10 : 6)*60}); } }
     } else if (u.kind === 'hero') heroBeaten(u);
   }
   G.units = G.units.filter(u => !u.dead);
@@ -1947,7 +1952,7 @@ function stepFightInner(){
 }
 function updateCam(){
   const p = G.player;
-  const ta = G.mode === 'team' ? G.teams[0][G.act[0]] : null, tb = G.mode === 'team' ? G.teams[1][G.act[1]] : null;
+  const ta = G.mode === 'team' && G.twoP ? G.player : null, tb = G.mode === 'team' && G.twoP ? G.units.find(u => u.isP2 && u.alive()) : null;
   if (ta && tb){ const mid = (ta.x + tb.x)/2; const target = Math.max(G.bounds.l, Math.min(G.bounds.r - viewW, mid - viewW/2)); G.cam += (target - G.cam)*.12; }
   else if (G.mode === 'versus'){ const [a, b] = G.vs; const mid = (a.x + b.x)/2; const target = Math.max(G.bounds.l, Math.min(G.bounds.r - viewW, mid - viewW/2)); G.cam += (target - G.cam)*.12; }
   else if (p){ const target = Math.max(G.bounds.l, Math.min(G.bounds.r - viewW, p.x - viewW*(p.face > 0 ? .38 : .62))); G.cam += (target - G.cam)*.1; }
@@ -1958,8 +1963,9 @@ function heroBeaten(u){
   if (G.mode === 'battle'){
     let pl = false;
     if (wasPlayer){ const mate = G.units.find(v => v !== u && v.team === 0 && v.kind === 'hero' && !v.isP2 && !v.summon && v.alive()); if (mate){ mate.isPlayer = true; G.player = mate; setSkillButtons(mate.id); } else pl = true; }
-    G.respawn.push({id:u.id, team:0, t:360, isPlayer:pl, isP2:wasP2});
-    addMsg(`<a>${u.name}</a> is beaten. Back at the fort in 6 seconds.`);
+    G.deaths = G.deaths || {}; const dk = '0:' + u.id, n = G.deaths[dk] = (G.deaths[dk]||0) + 1, wait = n >= 3 ? 10 : 6;
+    G.respawn.push({id:u.id, team:0, t:wait*60, isPlayer:pl, isP2:wasP2, name:u.name});
+    addMsg(`<a>${u.name}</a> is beaten (${n}×). Back at the fort in ${wait} seconds.`);
     return;
   }
   if (G.backups.length){
@@ -2049,26 +2055,33 @@ function versusTick(){
 }
 function startTeam(){
   const T = S.tm, st = STAGES[T.stage];
-  G = baseG('team', st, T.lvl); G.ZW = Math.max(980, Math.ceil(viewW)); G.bounds = { l:0, r:G.ZW };
-  G.twoP = !T.cpu; G.timer = 99*60; fx.length = 0; particles.length = 0; delayed.length = 0;
+  G = baseG('team', st, T.lvl); G.ZW = Math.max(1280, Math.ceil(viewW)); G.bounds = { l:0, r:G.ZW };
+  G.twoP = !T.cpu; G.timer = 180*60; fx.length = 0; particles.length = 0; delayed.length = 0;
   G.teams = [[], []]; G.act = [0, 0]; G.nextBan = null;
-  T.a.forEach((id, i) => { const u = heroUnit(id, 0, G.ZW*.32, ZMAX()*.5); u.face = 1; G.teams[0].push(u); G.usedHeroes.add(id); });
-  T.b.forEach((id, i) => { const u = heroUnit(id, 1, G.ZW*.68, ZMAX()*.5, T.cpu ? T.lvl : null); u.face = -1; u.entered = true;
+  T.a.forEach((id, i) => { const u = heroUnit(id, 0, G.ZW*.3 - (i%2)*40, ZMAX()*(i%2 ? .72 : .32)); u.face = 1; G.teams[0].push(u); G.usedHeroes.add(id); });
+  T.b.forEach((id, i) => { const u = heroUnit(id, 1, G.ZW*.7 + (i%2)*40, ZMAX()*(i%2 ? .72 : .32), T.cpu ? T.lvl : null); u.face = -1; u.entered = true;
     if (!T.cpu){ u.hp = u.maxhp = HEROES[id].hp; u.hpShow = u.hp; } G.teams[1].push(u); });
   const a = G.teams[0][0], b = G.teams[1][0];
   a.isPlayer = true; G.player = a; if (!T.cpu) b.isP2 = true;
-  G.units.push(a, b); G.cam = (G.ZW - viewW)/2; setSkillButtons(a.id);
+  G.units.push(a, b); for (const s of [0, 1]) if (G.teams[s][1]) G.units.push(G.teams[s][1]);
+  G.act = [Math.min(2, G.teams[0].length), Math.min(2, G.teams[1].length)];
+  G.cam = (G.ZW - viewW)/2; setSkillButtons(a.id);
   S.screen = 'fight'; S.paused = false; S.mode = 'team'; touchEl.hidden = !isTouch; $('cmd').hidden = true;
 }
 function teamLeft(t){ return G.teams[t].some(u => u.hp > 0); }
 function teamHp(t){ return G.teams[t].reduce((s, u) => s + Math.max(0, u.hp)/u.maxhp, 0); }
-function teamNext(side){
-  const idx = G.act[side] + 1; if (idx >= G.teams[side].length) return;
-  G.act[side] = idx; const nu = G.teams[side][idx];
+function teamNext(side, wasPlayer, wasP2){
+  const idx = G.act[side];
+  const mate = () => G.units.find(v => v.team === side && v.kind === 'hero' && !v.summon && v.alive() && !v.isPlayer && !v.isP2);
+  if (idx >= G.teams[side].length){
+    const m = mate(); if (m){ if (wasPlayer){ m.isPlayer = true; G.player = m; setSkillButtons(m.id); } else if (wasP2) m.isP2 = true; }
+    return;
+  }
+  G.act[side] = idx + 1; const nu = G.teams[side][idx];
   nu.x = side ? Math.min(G.bounds.r - 40, G.cam + viewW - 70) : Math.max(G.bounds.l + 40, G.cam + 70); nu.z = ZMAX()*.5;
   nu.y = -260; nu.vy = 0; nu.state = 'jump'; nu.t = 3; nu.inv = 70; nu.face = side ? -1 : 1;
-  if (side === 0){ nu.isPlayer = true; G.player = nu; setSkillButtons(nu.id); } else if (G.twoP) nu.isP2 = true;
-  G.units.push(nu); G.timer = 99*60; G.nextBan = { txt: nu.name, side, t:100 };
+  if (wasPlayer){ nu.isPlayer = true; G.player = nu; setSkillButtons(nu.id); } else if (wasP2) nu.isP2 = true;
+  G.units.push(nu); G.nextBan = { txt: nu.name, side, t:100 };
   SFX.go();
 }
 function teamTick(){
@@ -2078,11 +2091,7 @@ function teamTick(){
     const l0 = teamLeft(0), l1 = teamLeft(1);
     if (!l0 || !l1){ G.phase = 'ko'; G.pt = 0; flashScreen('#ffffff'); G.rw = l0 ? 0 : 1;
       if (G.rw === 0) SFX.win(); else SFX.lose(); for (const u of G.units) if (u.alive() && u.kind === 'hero' && !u.summon && u.team === G.rw) u.set('win'); return; }
-    if (--G.timer <= 0){
-      const a = G.teams[0][G.act[0]], b = G.teams[1][G.act[1]];
-      const loser = a.hp/a.maxhp <= b.hp/b.maxhp ? a : b;
-      loser.hp = 0; loser.set('fall'); loser.vy = -6; loser.vx = (loser.team ? 1 : -1)*4; loser.y = -1; G.timer = 99*60; flashScreen('#ffffff');
-    }
+    if (--G.timer <= 0){ G.phase = 'ko'; G.pt = 0; flashScreen('#ffffff'); G.rw = teamHp(0) >= teamHp(1) ? 0 : 1; if (G.rw === 0) SFX.win(); else SFX.lose(); for (const u of G.units) if (u.alive() && u.kind === 'hero' && !u.summon && u.team === G.rw) u.set('win'); }
   } else if (G.phase === 'ko' && G.pt > 170) finishGame(G.rw === 0);
 }
 function facePortrait(id, cx, cy, r, flip){
@@ -2095,27 +2104,27 @@ function drawTeamHUD(){
   for (const side of [0, 1]){
     G.teams[side].forEach((u, i) => {
       const cw = Math.min(86, (W/2 - 60)/4), x = side ? W - 12 - (i+1)*cw : 12 + i*cw, y = 10, dead = u.hp <= 0;
-      const act = G.teams[side][G.act[side]] === u; ctx.fillStyle = act ? 'rgba(255,220,120,.35)' : 'rgba(0,0,0,.45)'; ctx.beginPath(); ctx.roundRect(x, y, cw - 6, 54, 8); ctx.fill();
+      const act = G.units.includes(u) && u.hp > 0; ctx.fillStyle = act ? 'rgba(255,220,120,.35)' : 'rgba(0,0,0,.45)'; ctx.beginPath(); ctx.roundRect(x, y, cw - 6, 54, 8); ctx.fill();
       facePortrait(u.id, x + 20, y + 22, 16, side === 1);
       ctx.strokeStyle = side ? '#ff6a6a' : '#5ab0ff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x + 20, y + 22, 16, 0, 7); ctx.stroke();
       ctx.fillStyle = '#300'; ctx.fillRect(x + 4, y + 42, cw - 14, 5); ctx.fillStyle = side ? '#ff5a4a' : '#4aa8ff'; ctx.fillRect(x + 4, y + 42, (cw - 14)*Math.max(0, u.hp)/u.maxhp, 5);
       ctx.fillStyle = '#2a1a00'; ctx.fillRect(x + 4, y + 48, cw - 14, 3); ctx.fillStyle = '#ffc23a'; ctx.fillRect(x + 4, y + 48, (cw - 14)*(u.form ? u.formT/600 : u.sg/100), 3);
       ctx.font = '900 10px ' + UIF; ctx.textAlign = 'left'; ctx.fillStyle = '#fff'; ctx.fillText(u.form ? HEROES[u.form].name.split(' ')[0] : u.name, x + 39, y + 18);
-      ctx.fillStyle = '#9fd3ff'; ctx.fillText(dead ? 'K.O.' : act ? (side ? (G.twoP ? 'P2' : 'CPU') : 'P1') : 'Next ' + (i - G.act[side]), x + 39, y + 32);
+      ctx.fillStyle = '#9fd3ff'; ctx.fillText(dead ? 'K.O.' : act ? (u.isPlayer ? 'P1' : u.isP2 ? 'P2' : side ? 'CPU' : 'Ally') : 'Next ' + (i - G.act[side] + 1), x + 39, y + 32);
       if (dead){ ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.beginPath(); ctx.roundRect(x, y, cw - 6, 54, 8); ctx.fill(); ctx.strokeStyle = '#ff5a4a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x + 10, y + 10); ctx.lineTo(x + 30, y + 34); ctx.moveTo(x + 30, y + 10); ctx.lineTo(x + 10, y + 34); ctx.stroke(); }
     });
   }
   ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.beginPath(); ctx.roundRect(W/2-34, 12, 68, 46, 8); ctx.fill();
   ctx.textAlign = 'center'; ctx.font = '30px ' + DISP; ctx.fillStyle = G.timer < 600 ? '#ff6a4a' : '#ffd84a'; ctx.fillText(Math.ceil(G.timer/60), W/2, 46);
   ctx.font = '800 10px ' + UIF; ctx.fillStyle = '#fff'; ctx.fillText('TEAM BATTLE', W/2, 72);
-  if (G.phase === 'intro') banner(G.pt < 60 ? 'Team Battle' : 'Fight!', G.pt < 60 ? '1 on 1 · when a fighter is K.O.\'d, the next one steps in' : '', G.pt < 60 ? '#ffd84a' : '#ff6a3a');
+  if (G.phase === 'intro') banner(G.pt < 60 ? 'Team Battle' : 'Fight!', G.pt < 60 ? '2 on 2 · when a fighter is K.O.\'d, the next one steps in' : '', G.pt < 60 ? '#ffd84a' : '#ff6a3a');
   if (G.nextBan && G.phase === 'fight' && G.nextBan.t > 30) banner('Next: ' + G.nextBan.txt, G.nextBan.side ? 'Red Team' : 'Blue Team', G.nextBan.side ? '#ff8a7a' : '#8ac8ff');
   if (G.phase === 'ko' && G.pt < 160) banner(G.timer <= 0 ? 'Time!' : 'K.O.!', G.pt > 60 ? (G.rw === 0 ? 'Blue Team wins' : 'Red Team wins') : '', '#ff5a3a');
 }
 function drawTeamSetup(){
   menuStart(.55);
   const T = S.tm;
-  topBar('Team Versus · 4-hero relay', () => { S.screen = 'modes'; });
+  topBar('Team Fight · 2 on 2 with backups', () => { S.screen = 'modes'; });
   for (const side of [0, 1]){
     const x0 = side ? 500 : 30, team = side ? T.b : T.a;
     panel(x0, 50, 430, 196, side ? (T.cpu ? 'Red Team (Computer)' : 'Red Team (Player 2)') : 'Blue Team (Player 1)');
@@ -2142,7 +2151,7 @@ function drawTeamSetup(){
   });
   btn(360, 456, 240, 56, 'FIGHT!', true, () => { SFX.go(); startTeam(); });
   ctx.textAlign = 'center'; ctx.font = '700 11px ' + UIF; ctx.fillStyle = '#fff';
-  ctx.fillText('1 on 1 in team order. When a fighter is K.O.\'d, the next teammate steps in; the winner keeps their health and power.', 480, 528);
+  ctx.fillText('2 heroes per team on the field. When one is K.O.\'d, the next teammate steps in. Beat all 4 to win.', 480, 528);
   btn(30, 466, 110, 40, '‹ Back', false, () => { S.screen = 'missions'; }, true, '#7a5a2a');
   menuEnd();
 }
@@ -2311,6 +2320,11 @@ function drawHUD(){
 }
 function drawBattleHUD(){
   const mw = Math.min(340, W*.34), mx = W/2 - mw/2, my = 8;
+  let ry = 56; for (const r of G.respawn) if (r.team === 0){ ctx.font = '900 12px ' + UIF; ctx.textAlign = 'center'; ctx.fillStyle = '#9fd3ff'; ctx.strokeStyle = 'rgba(0,0,0,.7)'; ctx.lineWidth = 3; const tx = `${r.name || HEROES[r.id].name} returns in ${Math.ceil(r.t/60)}s`; ctx.strokeText(tx, W/2, ry + 10); ctx.fillText(tx, W/2, ry + 10); ry += 16; }
+  if (G.forts) G.forts.forEach((f, i) => { const bw = mw/2 - 6, bx = i ? mx + mw/2 + 6 : mx, by = 32;
+    ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.beginPath(); ctx.roundRect(bx - 3, by - 2, bw + 6, 17, 6); ctx.fill();
+    ctx.fillStyle = i ? '#e8343a' : '#3d8bff'; const k = Math.max(0, f.hp)/f.maxhp; if (i) ctx.fillRect(bx + bw*(1-k), by, bw*k, 13); else ctx.fillRect(bx, by, bw*k, 13);
+    ctx.font = '900 10px ' + UIF; ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.fillText(`${i ? 'Bandit fort' : 'Your fort'} ${Math.ceil(Math.max(0,f.hp))}`, bx + bw/2, by + 10); });
   ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.beginPath(); ctx.roundRect(mx-6, my-2, mw+12, 22, 8); ctx.fill();
   const X = x => mx + x / G.mapW * mw;
   ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.fillRect(X(G.cam), my, viewW / G.mapW * mw, 18);
@@ -2437,7 +2451,7 @@ function drawMissions(){
   ['samurai','ninja'].forEach((id, k) => { ctx.save(); ctx.translate(tx2 + 30 + k*22, 0); heroSprite(id, 'idle', 0, by + 74, 52); ctx.restore(); });
   ['lord','sci'].forEach((id, k) => { ctx.save(); ctx.translate(tx2 + bwid - 30 - k*22, 0); ctx.scale(-1, 1); heroSprite(id, 'idle', 0, by + 74, 52); ctx.restore(); });
   ctx.textAlign = 'center'; ctx.fillStyle = '#3b1206'; ctx.font = '22px ' + DISP; ctx.fillText('Team Versus', tx2 + bwid/2, by+32);
-  ctx.font = '700 11px ' + UIF; ctx.fillStyle = '#4a2410'; ctx.fillText('4 heroes each · 1 on 1 relay', tx2 + bwid/2, by+52);
+  ctx.font = '700 11px ' + UIF; ctx.fillStyle = '#4a2410'; ctx.fillText('4 heroes each · 2 on 2', tx2 + bwid/2, by+52);
   hot.push({x:tx2+HOTX, y:by, w:bwid, h:78, act:() => { S.screen = 'teamvs'; SFX.menu(); }});
   btn(330, 474, 300, 50, 'Choose Team', true, () => { S.screen = 'team'; SFX.menu(); });
   btn(20, 480, 140, 40, 'How to Play', false, () => { S.screen = 'help'; }, true, '#7a5a2a');
@@ -2777,7 +2791,7 @@ function drawModes(){
     ['Missions', 'Clear bandit waves stage by stage', () => { S.mode = 'mission'; S.screen = 'missions'; }, 'mission'],
     ['Battle Mode', 'Gold mines, troops and forts', () => { S.mode = 'battle'; S.screen = 'team'; }, 'battle'],
     ['Versus', '1 on 1 against the computer or a friend', () => { S.screen = 'versus'; }, 'versus'],
-    ['Team Fight', '4-hero relay, 1 on 1 at a time', () => { S.screen = 'teamvs'; }, 'team'],
+    ['Team Fight', '4 heroes each, always 2 on 2', () => { S.screen = 'teamvs'; }, 'team'],
     ['Online', 'Play a friend over the internet', () => { S.screen = 'online'; NET.msg = ''; }, 'online'],
   ];
   cards.forEach(([t, d, act, kind], i) => {
@@ -3033,7 +3047,7 @@ function netApply(s){
   if (g.mn) G.mines = g.mn.map(([x, prog, owner]) => ({x, prog, owner}));
   if (g.it) G.items = g.it.map(([kind, x, z]) => ({kind, x, z, t:0}));
   if (G.mode === 'battle'){ const fs = G.units.filter(u => u.kind === 'fort'); if (fs.length === 2) G.forts = fs[0].team === 0 ? fs : [fs[1], fs[0]]; }
-  const mine = G.mode === 'mission' || G.mode === 'battle' ? (G.units.find(u => u.isP2 && u.kind === 'hero') || G.player) : G.mode === 'team' && G.teams && G.teams[1] ? G.teams[1][G.act[1]] : G.vs && G.vs[1];
+  const mine = G.mode === 'mission' || G.mode === 'battle' ? (G.units.find(u => u.isP2 && u.kind === 'hero') || G.player) : G.mode === 'team' ? (G.units.find(u => u.isP2 && u.kind === 'hero' && u.alive()) || G.player) : G.vs && G.vs[1];
   if (mine && mine !== G.player){ G.player = mine; }
   if (G.player && G.player.sid !== NET.lastSid){ NET.lastSid = G.player.sid; setSkillButtons(G.player.sid); }
 }
