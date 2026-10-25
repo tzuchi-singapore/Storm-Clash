@@ -157,6 +157,7 @@ function tint(key, im){
 }
 for (const k in ASSETS){ const im = new Image(); im.onload = () => { if (/^(spear|archer|rider)_/.test(k)) tint(k, im); }; im.src = ASSETS[k]; IMG[k] = im; }
 let atlasLoaded = 0; const atlasTotal = Object.keys(ANIM).length;
+const TEARM = {"w": 395, "h": 360, "n": 24, "cols": 6}; { const im = new Image(); im.src = 'fx_tear.webp'; IMG.fx_tear = im; }
 for (const k in ANIM){ const im = new Image(); im.onload = () => atlasLoaded++; im.onerror = () => { atlasLoaded++; delete ANIM[k]; }; im.src = 'atlas_' + k + '.webp'; IMG['atlas_' + k] = im; }
 
 /* ================= sound ================= */
@@ -414,7 +415,7 @@ const ATK = {
 let UIDC = 0;
 class Unit {
   constructor(o){
-    Object.assign(this, { x:0, z:100, y:0, vx:0, vy:0, face:1, state:'idle', t:0, inv:0, armor:0, frozen:0, stunAcc:0, calm:0,
+    Object.assign(this, { x:0, z:100, y:0, vx:0, vy:0, face:1, state:'idle', t:0, dashN:3, dashCd:0, dashT:0, inv:0, armor:0, frozen:0, stunAcc:0, calm:0,
       hitDone:new Set(), ev:[], tap:{L:-99,R:-99}, run:0, comboStep:0, queued:false, mp:150, dead:false, deadT:0, flash:0,
       cool:rnd(20,60), plan:null, tgt:null, retarget:0, jAtk:false, combo:0, comboT:0, kos:0, tough:1, regen:1, riding:false, sg:0, burn:0, shock:0, poison:0, juggle:0, form:null, formT:0, buff:null, buffT:0, invT:0, squash:0, hold:0, hide:0, lifeT:0, dogFire:0, grabbed:null, heldBy:null, thrown:null }, o);
     this.maxhp = this.hp; this.hpShow = this.hp; this.uid = ++UIDC;
@@ -451,6 +452,8 @@ class Unit {
     if (this.comboT > 0 && --this.comboT === 0) this.combo = 0;
     if (this.comboPop > 0) this.comboPop--;
     if (this.swapCd > 0) this.swapCd--;
+    if (this.dashN < 3 && ++this.dashCd >= 180){ this.dashN++; this.dashCd = 0; } else if (this.dashN >= 3) this.dashCd = 0;
+    if (this.dashT && this.state !== 'jump') this.dashT = 0;
     if (this.charm > 0 && --this.charm === 0){ if (this.charmTeam != null){ this.team = this.charmTeam; this.charmTeam = null; } this.tgt = null; this.retarget = 0; }
     if (this.kind === 'hero') this.mp = Math.min(300, this.mp + 0.3*this.regen);
     this.hpShow += (this.hp - this.hpShow) * .08;
@@ -524,6 +527,12 @@ class Unit {
         break;
       }
       case 'jump': {
+        if (inp.ev.includes('J') && this.kind === 'hero' && this.t > 3 && this.dashN > 0 && !this.jAtk && !this.dashT){
+          const mx = (inp.r?1:0) - (inp.l?1:0), mz = (inp.d?1:0) - (inp.u?1:0), dir = mx || this.face;
+          this.dashN--; this.dashT = 14; this.dashDir = dir; this.dashZ = mz; this.face = dir; this.vx = dir*12.5; this.vy = Math.min(this.vy, -1.5); SFX.whoosh();
+          for (let i=0;i<8;i++) particles.push({x:this.x - dir*rnd(0,30), y:sy(this) - rnd(10, this.h), vx:-dir*rnd(1,3), vy:rnd(-.5,.5), life:12, max:12, col:this.color, kind:'spark'});
+        }
+        if (this.dashT > 0){ this.dashT--; this.vx = this.dashDir*12.5; this.vy = Math.min(this.vy, .4); this.z += this.dashZ*3; if (this.t % 2 === 0) particles.push({x:this.x - this.dashDir*20, y:sy(this) - this.h*.55, life:9, max:9, col:'#ffffff', kind:'thrust', face:this.dashDir}); if (!this.dashT) this.vx = this.dashDir*this.spd*1.2; }
         if (inp.ev.includes('A') && !this.jAtk){ this.jAtk = true; this.atk = ATK.jatk; this.hitDone.clear(); this.jT = 0; SFX.whoosh(); }
         if (this.jAtk){ this.jT++; if (this.jT >= 3 && this.jT <= 20) this.melee(this.atk); }
         if (this.y >= 0 && this.t > 2){ this.y = 0; this.jAtk = false; this.set('idle'); this.vx = 0; this.squash = 7; dust(this.x, this.z, 4); }
@@ -923,7 +932,7 @@ Object.assign(SPEC, {
   xevil: {
     f:{dur:30, pose:'sk_f', tick(m,t){ m.vx = 0; if (t===10){ fx.filter(p => p.kind === 'esword' && p.owner === m).forEach(p => p.dead = true); proj({kind:'esword', owner:m, x:m.x, z:m.z, y:-110, life:300, every:6, maxHits:2, pierce:true, hitR:44, hitZ:34, armed:false, dmg:12, kb:1.5, stun:20, mode:0, mt:0}); SFX.skill(); } }},
     u:{dur:36, pose:'sk_u', tick(m,t){ m.vx = 0; if (t===8){ proj({kind:'flag', owner:m, x:m.x + m.face*60, z:m.z, life:110, n:0, nmax:10, face:m.face}); SFX.heavy(); } }},
-    d:{dur:84, pose:(m)=> m.t < 40 ? ['atk1','atk2','atk3'][Math.floor(m.t/8) % 3] : 'sk_d', tick(m,t){ xianCombo(m, t, 5, 10, '#e8203a'); if (t===44){ proj({kind:'rift', owner:m, x:m.x + m.face*150, z:m.z, dir:m.face, life:46, every:4, maxHits:10, pierce:true, hitR:150, hitZ:40, dmg:7, kb:.3, stun:22, lastLaunch:-10}); shake = 10; SFX.heavy(); flashScreen('#3a0008'); } }},
+    d:{dur:84, pose:(m)=> m.t < 40 ? ['atk1','atk2','atk3'][Math.floor(m.t/8) % 3] : 'sk_d', tick(m,t){ xianCombo(m, t, 5, 10, '#e8203a'); if (t===44){ proj({kind:'rift', owner:m, x:m.x + m.face*150, z:m.z, dir:m.face, life:54, every:4, maxHits:10, pierce:true, hitR:150, hitZ:40, dmg:7, kb:.3, stun:22, lastLaunch:-10}); shake = 10; SFX.heavy(); flashScreen('#3a0008'); } }},
   },
   yao: {
     f:{dur:34, pose:'sk_f', tick(m,t){ m.vx = 0; if (t===8){ proj({kind:'lotus', owner:m, x:m.x + m.face*30, z:m.z, y:-170, life:18 + 5*7 + 14, n:0, nmax:5, gap:7, face:m.face, dmg:12, h:80}); SFX.skill(); } }},
@@ -1246,6 +1255,8 @@ function updateFx(){
         else beast(p.owner, 'vfx_tornado', {dmg:9, h:110, vx:6, x:p.x, z:(p.n - 3)*18, y:-40, maxHits:2, every:12, life:80, hitR:40, col:'#bff0d8', lastLaunch:-11}); SFX.arrow(); }
       if (p.t > p.life) p.dead = true; continue;
     }
+    if (p.kind === 'rift'){ for (const f of foes(p.owner)){ if (f.kind === 'fort' || !f.hittable() || Math.abs(f.x - p.x) > 260 || Math.abs(f.z - p.z) > 60) continue; f.x += Math.sign(p.x - f.x)*Math.min(2.2, Math.abs(p.x - f.x)*.08); f.z += (p.z - f.z)*.05; }
+      if (p.t % 3 === 0 && p.t < p.life - 8) particles.push({x:p.x + rnd(-50,50), y:G.st.FT + p.z - rnd(20, 300), vx:rnd(-3,3), vy:rnd(-3,3), life:14, max:14, col: Math.random() < .5 ? '#9fd8ff' : '#c08aff', kind:'spark'}); }
     if (p.kind === 'petal'){ p.y += p.vyy; p.z += p.vz || 0; if (p.y > 2) p.dead = true; }
     if (p.kind === 'letter'){ p.rad += 4.5; p.ang += .12; p.x = p.ox + Math.cos(p.ang)*p.rad; p.y = Math.min(-10, p.oy + Math.sin(p.ang)*p.rad*.5); }
     if (p.every && p.t % p.every === 0 && p.kind !== 'orbit'){ p.hit.clear(); if (p.kind === 'bigpalm'){ p.n++; } }
@@ -1426,7 +1437,14 @@ function drawFx(p){
     case 'flag': { const k = Math.min(1, t/8, (p.life - t)/12); ctx.globalAlpha = k; vimg('vfx_flag', gx, gy - 80 + (1 - Math.min(1, t/8))*-60, 170, Math.sin(t*.15)*.04, p.face < 0);
       ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = 'rgba(232,32,58,.3)'; ctx.beginPath(); ctx.ellipse(gx, gy, 60, 16, 0, 0, 7); ctx.fill(); break; }
     case 'soul': { ctx.globalAlpha = Math.min(1, (p.life - t)/10); vimg('vfx_soul', gx, gy + p.y, 46, 0, p.vx < 0); break; }
-    case 'rift': { const T = p.life, k = t < 6 ? t/6 : Math.min(1, (T - t)/12), L = 300;
+    case 'rift': if (ok(IMG.fx_tear)){ const T = p.life, open = Math.min(1, t/9), close = Math.min(1, (T - t)/10), k = Math.min(open, close), im = IMG.fx_tear, M = TEARM;
+        ctx.fillStyle = `rgba(6,2,24,${.42*k})`; ctx.fillRect(-400, -400, W + 800, H + 800);
+        const fi = Math.floor(t/2) % M.n, sx = (fi % M.cols)*M.w, sy0 = Math.floor(fi / M.cols)*M.h, Hh = 360, Ww = Hh*M.w/M.h, sxk = (.08 + .92*open*open) * (close < 1 ? .4 + .6*close : 1);
+        ctx.translate(gx, gy - Hh*.42); ctx.scale(p.dir*sxk, 1 + .06*(1 - open));
+        ctx.globalAlpha = Math.min(1, k*1.4); ctx.drawImage(im, sx, sy0, M.w, M.h, -Ww/2, -Hh/2, Ww, Hh);
+        ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = k*(.25 + .2*Math.random()); ctx.drawImage(im, sx, sy0, M.w, M.h, -Ww/2*1.04, -Hh/2*1.02, Ww*1.04, Hh*1.04);
+        break; }
+      else { const T = p.life, k = t < 6 ? t/6 : Math.min(1, (T - t)/12), L = 300;
       ctx.translate(gx, gy - 70); ctx.scale(p.dir, 1); ctx.rotate(-.5);
       ctx.fillStyle = `rgba(10,0,4,${.75*k})`; ctx.beginPath(); ctx.ellipse(0, 0, L/2*Math.min(1, t/6), 28*k + 6, 0, 0, 7); ctx.fill();
       ctx.globalCompositeOperation = 'lighter';
@@ -1798,6 +1816,7 @@ function drawBars(u){
   ctx.fillStyle = '#fff'; ctx.fillRect(gx-w/2, gy, w*Math.max(0,u.hpShow/u.maxhp), 3);
   ctx.fillStyle = u.team === 0 && u.kind !== 'hero' ? '#3d8bff' : '#e8343a'; ctx.fillRect(gx-w/2, gy, w*Math.max(0,u.hp/u.maxhp), 3);
   if (u.kind === 'hero'){ ctx.fillStyle = '#3d8bff'; ctx.fillRect(gx-w/2, gy+4, w*u.mp/300, 3); ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(gx-w/2-1, gy+8, w+2, 3); ctx.fillStyle = '#ffc23a'; ctx.fillRect(gx-w/2, gy+8, w*(u.form ? u.formT/600 : u.sg/100), 2); }
+  if (u.kind === 'hero' && !u.summon && (u.isPlayer || u.isP2) && u.dashN != null){ for (let i=0;i<3;i++){ const px = gx - 14 + i*14, py = gy + 17; ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.beginPath(); ctx.arc(px, py, 4.5, 0, 7); ctx.fill(); const f = i < u.dashN ? 1 : i === u.dashN ? (u.dashCd||0)/180 : 0; if (f > 0){ ctx.fillStyle = f >= 1 ? '#7fe8ff' : 'rgba(127,232,255,.45)'; ctx.beginPath(); ctx.moveTo(px, py); ctx.arc(px, py, 3.4, -Math.PI/2, -Math.PI/2 + 6.283*f); ctx.closePath(); ctx.fill(); } } }
 }
 function shadeC(hex, amt){ const n = parseInt(hex.slice(1),16); let r=n>>16,g=(n>>8)&255,b=n&255; const f=c=>Math.max(0,Math.min(255,Math.round(amt<0?c*(1+amt):c+(255-c)*amt))); return '#'+((1<<24)+(f(r)<<16)+(f(g)<<8)+f(b)).toString(16).slice(1); }
 function bubble(x, y, txt, col, big){
@@ -2920,11 +2939,12 @@ function drawHelp(){
     ['Move (left, right, in and out)', 'W A S D / Arrows', 'Joystick'],
     ['Attack (tap 3× for a combo)', 'J', 'Red fist'],
     ['Jump · attack in the air', 'K', 'Orange'],
+    ['Jump dash (3 charges, 3 s to refill each)', 'K again in the air (+ ← / →)', 'Jump twice'],
     ['Defend (hold)', 'L', 'Green shield'],
     ['Run · dash attack', 'Double-tap ← / →, then J', 'Push the stick twice'],
     ['Skill 1 · 2 · 3', 'U I O  or  L+→J, L+↑J, L+↓J', 'Blue skill buttons'],
     ['Ride a free raptor · get off', 'K next to it · K again', 'Jump next to it'],
-    ['Special (when the gold bar is full)', 'Y', 'Gold ★ button'],
+    ['Special (gold bar full) · Lu Chen: Good ⇄ Evil', 'Y', 'Gold ★ / ☯ button'],
     ['Leo: whip grabs · skill 3 again throws', 'O again  ·  J to punch', 'Skill 3 again'],
     ['Teammate command', 'Q', 'Command button'],
     ['Hire soldiers (Battle Mode)', '7 8 9', 'Buttons on the right'],
@@ -3199,7 +3219,7 @@ function drawStoryResult(r){
 /* ================= online (WebRTC via PeerJS) ================= */
 let ONLINE_START = null;
 const NET = { role:null, peer:null, ctl:null, fast:null, code:'', connected:false, msg:'', mode:'versus', stage:'temple', my:null, opp:{p:'kai', team:['kai','mei','rajan','zara']}, umap:new Map(), seq:0, evBuf:[], lastEv:0, remote:{l:false,r:false,u:false,d:false,defH:false}, remEv:[], ping:0, pingT:0, joinInput:null, rematchAsked:false, lastSnap:0 };
-const U_KEYS = ['armorMax','combo','comboT','charm','charmTeam','chg','chgOn','lives','recruit','kind','id','team','name','x','z','y','vx','vy','face','state','t','hp','maxhp','mp','sg','form','formT','buff','buffT','invT','inv','armor','frozen','shock','burn','poison','flash','squash','hide','summon','hitsLeft','lifeT','riding','seed','h','color','lv','jAtk','jT','stunT','atkKey','spKey','deadT','dead','isPlayer','isP2','dogFire','hold','comboStep','juggle'];
+const U_KEYS = ['dashN','dashCd','armorMax','combo','comboT','charm','charmTeam','chg','chgOn','lives','recruit','kind','id','team','name','x','z','y','vx','vy','face','state','t','hp','maxhp','mp','sg','form','formT','buff','buffT','invT','inv','armor','frozen','shock','burn','poison','flash','squash','hide','summon','hitsLeft','lifeT','riding','seed','h','color','lv','jAtk','jT','stunT','atkKey','spKey','deadT','dead','isPlayer','isP2','dogFire','hold','comboStep','juggle'];
 const RND1 = v => typeof v === 'number' ? Math.round(v*10)/10 : v;
 function loadPeer(){
   return new Promise((res, rej) => { if (window.Peer) return res(); const s = document.createElement('script'); s.src = window.SC_PEERJS || 'https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js'; s.onload = () => res(); s.onerror = () => rej(new Error('Could not load the online module. Check your internet connection.')); document.head.appendChild(s); });
