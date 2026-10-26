@@ -782,7 +782,7 @@ function applyHit(def, dir, a, src, hx, hy){
   if (def.hero && def.hero.superArmor && def.hp > 0 && !def.summon){
     def.flash = 4; sparks(hx, hy, '#ffd27a', 6);
     if (!(def.painT > 0)) def.painAcc = (def.painAcc || 0) + 1;
-    if (def.painAcc >= 5 && def.state !== 'ult'){ def.painAcc = 0; if (def.grabbed) releaseHeld(def); def.set('hurt'); def.stunT = 9999; def.painT = 61; def.vx = dir*1.5; fx.filter(p => p.owner === def && ['hook','chopspin'].includes(p.kind)).forEach(p => p.dead = true); floatText(def, 'Pain!', '#ffb070'); SFX.heavy(); }
+    if (def.painAcc >= 5 && def.state !== 'ult'){ def.painAcc = 0; if (def.grabbed) releaseHeld(def); def.set('hurt'); def.stunT = 9999; def.painT = 121; def.vx = dir*1.5; fx.filter(p => p.owner === def && ['hook','chopspin'].includes(p.kind)).forEach(p => p.dead = true); floatText(def, 'Pain!', '#ffb070'); SFX.heavy(); }
     return true;
   }
   const heavyUnit = SOLDIER[def.kind] && SOLDIER[def.kind].heavy;
@@ -2468,8 +2468,8 @@ function stepFightInner(){
 function updateCam(){
   const p = G.player;
   const ta = G.mode === 'team' && G.twoP ? G.player : null, tb = G.mode === 'team' && G.twoP ? G.units.find(u => u.isP2 && u.alive()) : null;
-  if (ta && tb){ const mid = (ta.x + tb.x)/2; const target = Math.max(G.bounds.l, Math.min(G.bounds.r - viewW, mid - viewW/2)); G.cam += (target - G.cam)*.12; }
-  else if (G.mode === 'versus'){ const [a, b] = G.vs; const mid = (a.x + b.x)/2; const target = Math.max(G.bounds.l, Math.min(G.bounds.r - viewW, mid - viewW/2)); G.cam += (target - G.cam)*.12; }
+  if (ta && tb){ const half = (viewW - 90)/2; let mid = (ta.x + tb.x)/2; if (Math.abs(ta.x - tb.x) > half*2) for (const u of [ta, tb]) u.x = Math.max(mid - half, Math.min(mid + half, u.x)); const target = Math.max(G.bounds.l, Math.min(G.bounds.r - viewW, mid - viewW/2)); G.cam += (target - G.cam)*.12; }
+  else if (G.mode === 'versus'){ const [a, b] = G.vs; const half = (viewW - 90)/2, mid = (a.x + b.x)/2; if (Math.abs(a.x - b.x) > half*2) for (const u of [a, b]) u.x = Math.max(mid - half, Math.min(mid + half, u.x)); const target = Math.max(G.bounds.l, Math.min(G.bounds.r - viewW, mid - viewW/2)); G.cam += (target - G.cam)*.12; }
   else if (p){ const target = Math.max(G.bounds.l, Math.min(G.bounds.r - viewW, p.x - viewW*(p.face > 0 ? .38 : .62))); G.cam += (target - G.cam)*.1; }
 }
 function heroBeaten(u){
@@ -2534,10 +2534,10 @@ function battleTick(){
 }
 function startVersus(){
   const V = S.vs, st = STAGES[V.stage];
-  G = baseG('versus', st, V.lvl); G.ZW = Math.max(980, Math.ceil(viewW)); G.bounds = { l:0, r:G.ZW };
+  G = baseG('versus', st, V.lvl); G.ZW = Math.max(2000, Math.ceil(viewW*2)); G.bounds = { l:0, r:G.ZW };
   G.twoP = !V.cpu; G.round = 1; G.wins = [0,0]; G.timer = 99*60;
   fx.length = 0; particles.length = 0;
-  const a = heroUnit(V.p1, 0, G.ZW*.32, ZMAX()*.5), b = heroUnit(V.p2, 1, G.ZW*.68, ZMAX()*.5, V.cpu ? V.lvl : null);
+  const VG = Math.min(240, viewW*.2), a = heroUnit(V.p1, 0, G.ZW/2 - VG, ZMAX()*.5), b = heroUnit(V.p2, 1, G.ZW/2 + VG, ZMAX()*.5, V.cpu ? V.lvl : null);
   a.isPlayer = true; a.face = 1; b.face = -1; if (!V.cpu){ b.isP2 = true; b.hp = b.maxhp = HEROES[V.p2].hp; b.hpShow = b.hp; }
   if (V.cpu){ b.hp = b.maxhp = Math.round(HEROES[V.p2].hp * [0.85, 1, 1.15][V.lvl]); b.hpShow = b.hp; }
   G.vs = [a, b]; G.units.push(a, b); G.player = a; G.cam = (G.ZW - viewW)/2;
@@ -2546,7 +2546,7 @@ function startVersus(){
 }
 function versusRound(){
   const [a, b] = G.vs; fx.length = 0; G.echoes = []; delayed.length = 0; G.units = G.units.filter(u => !u.summon);
-  for (const [u, x, f] of [[a, G.ZW*.32, 1], [b, G.ZW*.68, -1]]){
+  const VG = Math.min(240, viewW*.2); G.cam = (G.ZW - viewW)/2; for (const [u, x, f] of [[a, G.ZW/2 - VG, 1], [b, G.ZW/2 + VG, -1]]){
     Object.assign(u, { x, z:ZMAX()*.5, y:0, vx:0, vy:0, face:f, hp:u.maxhp, hpShow:u.maxhp, mp:150, inv:0, invT:0, frozen:0, burn:0, shock:0, poison:0, juggle:0, armor:0, deadT:0, buff:null, buffT:0, hold:0, hide:0, grabbed:null, heldBy:null, thrown:null });
     if (u.form){ u.formT = 0; u.endForm(); }
     u.set('idle');
@@ -2570,11 +2570,11 @@ function versusTick(){
 }
 function startTeam(){
   const T = S.tm, st = STAGES[T.stage];
-  G = baseG('team', st, T.lvl); G.ZW = Math.max(1280, Math.ceil(viewW)); G.bounds = { l:0, r:G.ZW };
+  G = baseG('team', st, T.lvl); G.ZW = Math.max(2200, Math.ceil(viewW*2.2)); G.bounds = { l:0, r:G.ZW };
   G.twoP = !T.cpu; G.timer = 180*60; fx.length = 0; particles.length = 0; delayed.length = 0;
   G.teams = [[], []]; G.act = [0, 0]; G.nextBan = null;
-  T.a.forEach((id, i) => { const u = heroUnit(id, 0, G.ZW*.3 - (i%2)*40, ZMAX()*(i%2 ? .72 : .32)); u.face = 1; G.teams[0].push(u); G.usedHeroes.add(id); });
-  T.b.forEach((id, i) => { const u = heroUnit(id, 1, G.ZW*.7 + (i%2)*40, ZMAX()*(i%2 ? .72 : .32), T.cpu ? T.lvl : null); u.face = -1; u.entered = true;
+  T.a.forEach((id, i) => { const u = heroUnit(id, 0, G.ZW/2 - Math.min(280, viewW*.24) - (i%2)*40, ZMAX()*(i%2 ? .72 : .32)); u.face = 1; G.teams[0].push(u); G.usedHeroes.add(id); });
+  T.b.forEach((id, i) => { const u = heroUnit(id, 1, G.ZW/2 + Math.min(280, viewW*.24) + (i%2)*40, ZMAX()*(i%2 ? .72 : .32), T.cpu ? T.lvl : null); u.face = -1; u.entered = true;
     if (!T.cpu){ u.hp = u.maxhp = HEROES[id].hp; u.hpShow = u.hp; } G.teams[1].push(u); });
   const a = G.teams[0][0], b = G.teams[1][0];
   a.isPlayer = true; G.player = a; if (!T.cpu) b.isP2 = true;
