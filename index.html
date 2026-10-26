@@ -156,9 +156,24 @@ function tint(key, im){
   } catch(e){}
 }
 for (const k in ASSETS){ const im = new Image(); im.onload = () => { if (/^(spear|archer|rider)_/.test(k)) tint(k, im); }; im.src = ASSETS[k]; IMG[k] = im; }
-let atlasLoaded = 0; const atlasTotal = Object.keys(ANIM).length;
+
 const TEARM = {"w": 395, "h": 360, "n": 24, "cols": 6}; { const im = new Image(); im.src = 'fx_tear.webp'; IMG.fx_tear = im; }
-for (const k in ANIM){ const im = new Image(); im.onload = () => atlasLoaded++; im.onerror = () => { atlasLoaded++; delete ANIM[k]; }; im.src = 'atlas_' + k + '.webp'; IMG['atlas_' + k] = im; }
+// Atlases are big (~30 MB each once decoded), so only the fighters on screen are kept in memory.
+const ATL = {}, ADEP = { knight:['dknight'], monk:['buddha'], sci:['mecha','dog'], lord:['lordx','golem','iceking'], ninja:['shade'], madsci:['biomech'], taoist:['jiangshi'], xian:['xgood','xevil'], yao:['yaod'], vraxx:['vraxxf'], rio:['riox'] };
+function loadAtlas(k){ if (ATL[k] || !ANIM[k]) return; const im = new Image(); im.decoding = 'async'; im.onerror = () => { im.failed = true; }; im.src = 'atlas_' + k + '.webp'; ATL[k] = im; IMG['atlas_' + k] = im; }
+function dropAtlas(k){ const im = ATL[k]; if (!im) return; im.onerror = null; im.removeAttribute('src'); delete ATL[k]; delete IMG['atlas_' + k]; }
+function needAtlases(ids){ const need = new Set(); for (const id of ids){ if (!id) continue; const k = AID(id); need.add(k); for (const d of (ADEP[k] || [])) need.add(d); } return need; }
+let atlasT = 0;
+function atlasTick(){
+  if (++atlasT % 15) return;
+  const ids = [];
+  if (typeof G !== 'undefined' && G && S.screen === 'fight'){ for (const u of G.units) if (u.kind === 'hero'){ ids.push(u.id, u.sid); } for (const b of (G.backups || [])) ids.push(b && b.id ? b.id : b); if (G.teams) for (const t of G.teams) for (const u of (t || [])) ids.push(u && u.id ? u.id : u); }
+  else { ids.push(...(SAVE.team || [])); if (S.vs) ids.push(S.vs.p1, S.vs.p2); }
+  const need = needAtlases(ids);
+  for (const k of need) loadAtlas(k);
+  const have = Object.keys(ATL);
+  if (have.length > need.size + 2) for (const k of have) if (!need.has(k)) dropAtlas(k);
+}
 
 /* ================= sound ================= */
 let AC = null;
@@ -1952,7 +1967,7 @@ function tintDraw(im, sx, sy2, sw, sh, dx, dy, dw, dh, col, alpha, add){
 }
 const FB = { sk_thr:['atk3','sk_d'], atk1:['atk2','atk3'], atk2:['atk1','atk3'], atk3:['atk2','atk1'], sk_f:['atk2','cast','atk1'], sk_u:['atk3','cast','atk2'], sk_d:['atk3','atk1','cast'], cast:['win','sk_f','atk2'], win:['cast'], run:['walk'], jump:['fall'], guard:[], ult:['cast','atk3'] };
 function heroAnim(u){
-  const A = ANIM[AID(u.sid)]; if (!A) return null;
+  const A = ANIM[AID(u.sid)]; if (!A) return null; const AI_ = IMG['atlas_' + AID(u.sid)]; if (!ok(AI_)){ loadAtlas(AID(u.sid)); return null; }
   let name, prog = null; const st = u.state, t = u.t;
   switch (st){
     case 'idle': name = 'idle'; break;
@@ -1990,7 +2005,7 @@ function bodyDraw(u){
     }
     const r = heroAnim(u);
     if (r){ const sc = u.h / r.A.idleH, [x, y, w, h, ax, by] = r.fr; return { im:IMG['atlas_' + AID(u.sid)], sx:x, sy:y, sw:w, sh:h, dx:-w*sc*ax, dy:-h*sc - by*sc, dw:w*sc, dh:h*sc, proc: !r.exact }; }
-    const base = META[u.sid + '_idle'] ? u.sid : AID(u.sid), f = heroFrame(u); let key = base + '_' + f, proc = false;
+    const base = META[u.sid + '_idle'] ? u.sid : META[AID(u.sid) + '_idle'] ? AID(u.sid) : u.id, f = heroFrame(u); let key = base + '_' + f, proc = false;
     if (!META[key] || !ok(IMG[key])){ key = base + '_idle'; proc = true; }
     const m = META[key], im = IMG[key]; if (!m || !ok(im)) return null;
     const sc = u.h / META[base + '_idle'].h;
@@ -2762,7 +2777,7 @@ function drawCutin(){
   for (let i=0;i<14;i++){ ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.fillRect(((i*97 + t*30) % (W+200)) - 100, 60 + (i*37 % 110), 120, 3); }
   ctx.restore();
   const A = ANIM[AID(u.id)], an = A && (A.anims.win || A.anims.cast || A.anims.idle);
-  if (an){ const fr = A.frames[an.f[Math.min(an.f.length-1, Math.floor(t/4))]], [x, y, w, h] = fr, sc = 330 / A.idleH; ctx.drawImage(IMG['atlas_' + AID(u.id)], x, y, w, h, W*.12, H*.5 + 150 - h*sc, w*sc, h*sc); }
+  if (an && ok(IMG['atlas_' + AID(u.id)])){ const fr = A.frames[an.f[Math.min(an.f.length-1, Math.floor(t/4))]], [x, y, w, h] = fr, sc = 330 / A.idleH; ctx.drawImage(IMG['atlas_' + AID(u.id)], x, y, w, h, W*.12, H*.5 + 150 - h*sc, w*sc, h*sc); }
   else { const key = u.id + '_win', m = META[key]; if (m && ok(IMG[key])){ const h = 330; ctx.drawImage(IMG[key], W*.12, H*.5 + 150 - h*m.h/META[u.id+'_idle'].h, h*m.w/META[u.id+'_idle'].h, h*m.h/META[u.id+'_idle'].h); } }
   ctx.textAlign = 'left'; ctx.font = '62px ' + DISP; ctx.lineWidth = 10; ctx.strokeStyle = '#2a0f05'; ctx.strokeText(ULTN[u.id] || 'Special', W*.44, H*.5 + 30); ctx.fillStyle = '#fff6c8'; ctx.fillText(ULTN[u.id] || 'Special', W*.44, H*.5 + 30);
   ctx.font = '900 18px ' + UIF; ctx.lineWidth = 4; ctx.strokeText(u.name.toUpperCase() + ' · SPECIAL', W*.44 + 4, H*.5 - 26); ctx.fillStyle = '#ffd84a'; ctx.fillText(u.name.toUpperCase() + ' · SPECIAL', W*.44 + 4, H*.5 - 26);
@@ -2909,7 +2924,7 @@ function drawTitle(){
   const g = ctx.createLinearGradient(0, 50, 0, 128); g.addColorStop(0, '#fff6c8'); g.addColorStop(.6, '#ffc23a'); g.addColorStop(1, '#ff7a1a');
   ctx.fillStyle = g; ctx.fillText('STORM CLASH', 480, 128);
   ctx.font = '900 18px ' + UIF; ctx.lineWidth = 4; ctx.strokeText('HEROES OF THE SIX WINDS', 480, 160); ctx.fillStyle = '#fff'; ctx.fillText('HEROES OF THE SIX WINDS', 480, 160);
-  const loading = atlasLoaded < atlasTotal;
+  const loading = false;
   const msg = loading ? `Loading fighters… ${Math.round(atlasLoaded/atlasTotal*100)}%` : isTouch ? 'Tap to start' : 'Press Enter to start';
   ctx.font = '900 20px ' + UIF; ctx.fillStyle = (menuT>>5)%2 ? '#ffe27a' : '#fff'; ctx.strokeText(msg, 480, 248); ctx.fillText(msg, 480, 248);
   if (!loading) hot.push({x:0, y:0, w:W, h:H, act:() => { S.screen = 'modes'; SFX.menu(); }});
@@ -3243,7 +3258,7 @@ function menuKeys(){
   if (!$('settings').hidden) return;
   const okk = pr.some(k => ['Enter','Space','KeyJ'].includes(k)), back = pr.includes('Escape');
   const L = pr.some(k => ['KeyA','ArrowLeft'].includes(k)), R = pr.some(k => ['KeyD','ArrowRight'].includes(k));
-  if (S.screen === 'title' && okk && atlasLoaded >= atlasTotal){ S.screen = 'modes'; SFX.menu(); }
+  if (S.screen === 'title' && okk){ S.screen = 'modes'; SFX.menu(); }
   else if (S.screen === 'modes'){ if (back) S.screen = 'title'; }
   else if (S.screen === 'story'){ if (back) S.screen = 'modes'; }
   else if (S.screen === 'chapter'){ if (back) S.screen = 'story'; }
@@ -3674,6 +3689,7 @@ function frame(now){
 }
 let errCount = 0;
 function frameInner(now){
+  atlasTick();
   ctx.setTransform(cv.width/W, 0, 0, cv.height/H, 0, 0); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
   acc += Math.min(100, now - last); last = now;
   while (acc >= 1000/60){
