@@ -508,6 +508,7 @@ class Unit {
     if (this.comboPop > 0) this.comboPop--;
     if (this.swapCd > 0) this.swapCd--;
     if (this.webT > 0) this.webT--;
+    if (this.painT > 0 && --this.painT === 0){ this.invT = 30; if (this.state === 'hurt') this.set('idle'); }
     if (this.dashN < 3 && ++this.dashCd >= 180){ this.dashN++; this.dashCd = 0; } else if (this.dashN >= 3) this.dashCd = 0;
     if (this.dashT && this.state !== 'jump') this.dashT = 0;
     if (this.charm > 0 && --this.charm === 0){ if (this.charmTeam != null){ this.team = this.charmTeam; this.charmTeam = null; } this.tgt = null; this.retarget = 0; }
@@ -780,8 +781,8 @@ function applyHit(def, dir, a, src, hx, hy){
   if (def.thorns && src && src !== def && !a.kind && src.kind !== 'fort' && src.hp > 1){ src.hp = Math.max(1, src.hp - dmg*def.thorns); src.flash = 4; sparks(src.x, sy(src) - src.h*.5, '#c8a060', 5); }
   if (def.hero && def.hero.superArmor && def.hp > 0 && !def.summon){
     def.flash = 4; sparks(hx, hy, '#ffd27a', 6);
-    def.painAcc = (def.painAcc || 0) + 1;
-    if (def.painAcc >= 5 && def.state !== 'sp' && def.state !== 'ult'){ def.painAcc = 0; if (def.grabbed) releaseHeld(def); def.set('hurt'); def.stunT = 18; def.invT = 30; def.vx = dir*1.5; floatText(def, 'Pain!', '#ffb070'); SFX.heavy(); }
+    if (!(def.painT > 0)) def.painAcc = (def.painAcc || 0) + 1;
+    if (def.painAcc >= 5 && def.state !== 'sp' && def.state !== 'ult'){ def.painAcc = 0; if (def.grabbed) releaseHeld(def); def.set('hurt'); def.stunT = 60; def.painT = 60; def.vx = dir*1.5; floatText(def, 'Pain!', '#ffb070'); SFX.heavy(); }
     return true;
   }
   const heavyUnit = SOLDIER[def.kind] && SOLDIER[def.kind].heavy;
