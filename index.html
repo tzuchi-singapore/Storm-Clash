@@ -235,7 +235,7 @@ const HEROES = {
           sk:{ f:{name:'Lotus Bloom',cost:70,icon:'lotus'}, u:{name:'Phoenix Seal',cost:70,icon:'phoenix'}, d:{name:'Fan Dance',cost:90,icon:'fan'} } },
   yaod:{ form:true, name:'Su Yao', title:'Celestial Goddess', color:'#ffe9a8', hp:500, spd:3.9, pow:1.3, h:114, stats:[4,4,4], bio:'',
           sk:{ f:{name:'Golden Lotus',cost:70,icon:'lotus'}, u:{name:'Divine Furnace',cost:80,icon:'furnace'}, d:{name:'Tempest Fan',cost:90,icon:'fan'} } },
-  brute:{ name:'Gorgrim', title:'Tank Brute', color:'#9ccf5a', hp:980, spd:2.0, pow:1.35, h:150, stats:[5,1,5], superArmor:true, bio:'Dr. Vex\'s super bio-weapon: half tank, half mutant. He never falls down, he only gets angrier.',
+  brute:{ name:'Gorgrim', title:'Tank Brute', color:'#9ccf5a', hp:980, spd:1.5, pow:1.35, h:150, stats:[5,1,5], superArmor:true, bio:'Dr. Vex\'s super bio-weapon: half tank, half mutant. He never blocks and never falls down. Defend button fires a Bio Canister (60 MP).',
           sk:{ f:{name:'Chain Reaper',cost:70,icon:'spin'}, u:{name:'Tank Cannon',cost:80,icon:'missile'}, d:{name:'Hook Grab',cost:70,icon:'hook'} } },
   vraxx:{ name:'Vraxx', title:'Alien Warlord', color:'#9a6aff', hp:680, spd:3.0, pow:1.2, h:128, stats:[5,3,4], bio:'Reptilian warlord of the star empire. Brute strength, psychic power and alien steel.',
           sk:{ f:{name:'Black Hole Bomb',cost:80,icon:'orb'}, u:{name:'Psychic Lift',cost:70,icon:'rise'}, d:{name:'Volt Blade',cost:90,icon:'slash'} } },
@@ -551,7 +551,8 @@ class Unit {
           else { this.comboStep = 0; this.startAtk('p1'); this.vx = 0; }
           break;
         }
-        if ((inp.ev.includes('D') || inp.defH) && this.kind === 'hero' && !this.riding){ this.set('defend'); this.vx = 0; this.run = 0; }
+        if (this.sid === 'brute'){ if (inp.ev.includes('D') && this.mp >= 60*(this.costMul||1)){ this.mp -= 60*(this.costMul||1); this.sp = SPEC.brute.g; this.spKey = 'g'; this.set('sp'); this.vx = 0; this.run = 0; } }
+        else if ((inp.ev.includes('D') || inp.defH) && this.kind === 'hero' && !this.riding){ this.set('defend'); this.vx = 0; this.run = 0; }
         break;
       }
       case 'atk': {
@@ -764,9 +765,8 @@ function applyHit(def, dir, a, src, hx, hy){
   if (def.thorns && src && src !== def && !a.kind && src.kind !== 'fort' && src.hp > 1){ src.hp = Math.max(1, src.hp - dmg*def.thorns); src.flash = 4; sparks(src.x, sy(src) - src.h*.5, '#c8a060', 5); }
   if (def.hero && def.hero.superArmor && def.hp > 0 && !def.summon){
     def.flash = 4; sparks(hx, hy, '#ffd27a', 6);
-    const big = a.kd || (a.launch || 0) < -6 || a.heavy;
-    def.painAcc = (def.painAcc || 0) + (big ? 3 : 1);
-    if (def.painAcc >= 6 && def.state !== 'sp' && def.state !== 'ult'){ def.painAcc = 0; if (def.grabbed) releaseHeld(def); def.set('hurt'); def.stunT = 18; def.invT = 60; def.vx = dir*1.5; floatText(def, 'Pain!', '#ffb070'); SFX.heavy(); }
+    def.painAcc = (def.painAcc || 0) + 1;
+    if (def.painAcc >= 5 && def.state !== 'sp' && def.state !== 'ult'){ def.painAcc = 0; if (def.grabbed) releaseHeld(def); def.set('hurt'); def.stunT = 18; def.invT = 30; def.vx = dir*1.5; floatText(def, 'Pain!', '#ffb070'); SFX.heavy(); }
     return true;
   }
   const heavyUnit = SOLDIER[def.kind] && SOLDIER[def.kind].heavy;
@@ -987,6 +987,7 @@ Object.assign(SPEC, {
       lob(m, 'vfx_shell', tx, 30, {y:-60, x0:m.x + m.face*70, aoe:110, hits:2, every:8, dmg:18, burn:110, col:'#ff9a3a', h:30, spin:true}); shake = 6; SFX.heavy(); for (let i=0;i<10;i++) particles.push({x:m.x + m.face*80, y:sy(m) - 60, vx:m.face*rnd(1,4), vy:rnd(-2,1), life:16, max:16, col: i%2 ? 'rgba(255,210,122,.8)' : 'rgba(120,120,120,.8)', kind:'smoke', s:rnd(8,16)}); } }},
     d:{dur:60, pose:'sk_d', tick(m,t){ m.vx = 0; if (t===8){ proj({kind:'hook', owner:m, x:m.x + m.face*40, z:m.z, y:-80, dir:m.face, life:80}); SFX.whoosh(); } if (t > 12 && !fx.some(p => p.kind === 'hook' && p.owner === m)) m.t = Math.max(m.t, 56); }},
     thr:{dur:30, pose:'atk3', tick(m,t){ m.vx = 0; }},
+    g:{dur:40, pose:'sk_u', tick(m,t){ m.vx = 0; if (t===12){ lob(m, 'canister', aimX(m, 520), 38, {y:-70, x0:m.x + m.face*70, aoe:120, hits:1, every:10, dmg:14, poison:150, col:'#8aff4a', h:34, spin:true, gas:120}); shake = 5; SFX.heavy(); dust(m.x + m.face*60, m.z, 6); } }},
   },
   vraxx: {
     f:{dur:36, pose:'sk_f', tick(m,t){ m.vx = 0; if (t===12){ const tx = aimX(m, 260); lob(m, 'vfx_abomb', tx, 26, {y:-70, bhole:{life:52, every:15, hits:3, dmg:12, r:180, size:120}, h:34, spin:true}); SFX.arrow(); } }},
@@ -1004,12 +1005,12 @@ Object.assign(SPEC, {
   rio: {
     f:{dur:30, pose:'sk_f', tick(m,t){ m.vx = 0; if (t===10){ proj({kind:'web', owner:m, x:m.x + m.face*30, z:m.z, y:m.y - 70, vx:m.face*9, life:60, dmg:10, kb:0, stun:120, shock:120, r:24}); SFX.arrow(); } }},
     u:{dur:34, pose:'sk_u', tick(m,t){ m.vx = 0; if (t===8){ proj({kind:'bioarm', mech:true, owner:m, dir:m.face, oy:-56, len:0, max:170, w:30, life:24, every:8, dmg:17, kb:1.2, stun:24, r:20, pierce:true}); SFX.heavy(); } }},
-    d:{dur:58, pose:(m)=> m.t < 26 ? ['atk1','atk2','atk3'][Math.floor(m.t/8) % 3] : 'sk_d', tick(m,t){ xianCombo(m, t, 3, 12, '#9fe0ff'); if (t===32){ lob(m, 'vfx_abomb', aimX(m, 200), 22, {y:-100, bhole:{life:30, every:13, hits:2, dmg:14, r:130, size:90}, h:26, spin:true}); SFX.arrow(); } }},
+    d:{dur:58, pose:(m)=> m.t < 26 ? ['atk1','atk2','atk3'][Math.floor(m.t/8) % 3] : 'sk_d', tick(m,t){ xianCombo(m, t, 3, 12, '#9fe0ff'); if (t===28){ lob(m, 'vfx_abomb', aimX(m, 130), 14, {y:-100, x0:m.x + m.face*30, bhole:{life:34, every:14, hits:2, dmg:14, r:170, size:96}, h:26, spin:true}); SFX.arrow(); } }},
   },
   riox: {
     f:{dur:32, pose:'sk_f', tick(m,t){ m.vx = 0; if (t===10){ for (const s of [-1, 1]) proj({kind:'minibot', owner:m, x:m.x + m.face*40, z:Math.max(4, Math.min(ZMAX()-4, m.z + s*18)), vx:m.face*3.2, vx0:m.face*3.2, life:150, every:20, maxHits:2, stall:true, pierce:true, hitR:32, hitZ:30, dmg:12, kb:.5, stun:50, shock:60, face:m.face}); SFX.skill(); } }},
     u:{dur:48, pose:'sk_u', tick(m,t){ m.vx = 0; if (t===8){ proj({kind:'bioarm', mech:true, owner:m, dir:m.face, oy:-58, len:0, max:290, w:48, life:44, every:7, dmg:14, kb:.8, stun:24, r:28, pierce:true, drill:true}); SFX.heavy(); shake = 6; } }},
-    d:{dur:78, pose:(m)=> m.t < 42 ? ['atk1','atk2','atk3'][Math.floor(m.t/8) % 3] : 'sk_d', tick(m,t){ xianCombo(m, t, 5, 10, '#ffd27a'); if (t===46) for (let i=0;i<3;i++) lob(m, 'vfx_abomb', m.x + m.face*(150 + i*80), 22 + i*4, {y:-110, bhole:{life:30, every:13, hits:2, dmg:12, r:110, size:84}, h:26, spin:true}); }},
+    d:{dur:78, pose:(m)=> m.t < 42 ? ['atk1','atk2','atk3'][Math.floor(m.t/8) % 3] : 'sk_d', tick(m,t){ xianCombo(m, t, 5, 10, '#ffd27a'); if (t===44){ const tx = aimX(m, 130); for (let i=0;i<3;i++) lob(m, 'vfx_abomb', tx + m.face*(i - 1)*70, 12 + i*4, {y:-110, x0:m.x + m.face*30, bhole:{life:34, every:14, hits:2, dmg:12, r:150, size:84}, h:26, spin:true}); } }},
   },
   mira: {
     f:{dur:28, pose:'sk_f', tick(m,t){ m.vx = 0; if (t===8 || t===11 || t===14){ const i = (t - 8)/3; proj({kind:'knife', owner:m, x:m.x + m.face*30, z:Math.max(4, Math.min(ZMAX()-4, m.z + (i - 1)*12)), y:m.y - 66 + (i - 1)*8, vx:m.face*13, life:60, dmg:14, kb:1, stun:16, r:14}); SFX.arrow(); } }},
@@ -1206,7 +1207,7 @@ const ULT = {
   rio:{dur:50, anim:'cast', tick(m,t){ if (t===26) m.setForm('riox', 600); }},
   brute:{dur:56, anim:'cast', tick(m,t){ if (t===10){ SFX.ult(); floatText(m, '♪ Wheeet!', '#ffffff'); } if (t===30){ keepSummons(m, 'cerb', 1, {hitsLeft:12, lifeT:600}, i => [m.x + m.face*90, m.z]); shake = 8; } }},
   mira:{dur:60, anim:'cast', tick(m,t){ if (t===6) proj({kind:'vehicle', owner:m, img:'vfx_ambulance', x:m.x - m.face*560, z:Math.max(4, m.z - 26), stopX:m.x - m.face*40, vx:m.face*18, life:200, h:96, nohit:true, siren:true});
-      if (t===34){ const sp = [['nurse',70,-24],['recep',120,20],['doc',40,30],['surgeon',150,-20]]; for (const [id, dx, dz] of sp) keepSummons(m, id, 1, {hitsLeft:5, lifeT:600}, i => [m.x + m.face*dx, m.z + dz]); SFX.skill(); } }},
+      if (t===34){ const sp = [['nurse',70,-24],['recep',120,20],['doc',40,30],['surgeon',150,-20]]; for (const [id, dx, dz] of sp) keepSummons(m, id, 1, {hitsLeft:6, lifeT:600}, i => [m.x + m.face*dx, m.z + dz]); SFX.skill(); } }},
   bella:{dur:60, anim:'cast', tick(m,t){ if (t===6) proj({kind:'vehicle', owner:m, img:'vfx_limo', x:m.x - m.face*620, z:Math.max(4, m.z - 26), stopX:m.x - m.face*30, vx:m.face*18, life:200, h:70, nohit:true});
       if (t===34){ keepSummons(m, 'guard1', 1, {hitsLeft:8, lifeT:900}, i => [m.x + m.face*80, m.z - 22]); keepSummons(m, 'guard2', 1, {hitsLeft:8, lifeT:900}, i => [m.x + m.face*110, m.z + 22]); SFX.heavy(); } }},
   taoist:{dur:50, anim:'cast', tick(m,t){ if (t===24){ fx.filter(p => p.kind === 'bagua' && p.owner === m).forEach(p => p.dead = true); proj({kind:'bagua', owner:m, x:m.x, z:m.z, life:600}); flashScreen('#ffe27a'); SFX.ult(); } }},
@@ -1372,9 +1373,10 @@ function updateFx(){
       if (p.t > p.life) p.dead = true; continue;
     }
     if (p.kind === 'lob'){
-      if (!p.armed){ p.vy += p.g; p.y += p.vy; p.ang = Math.atan2(p.vy, p.vx);
+      if (!p.armed){ p.vy += p.g; p.y += p.vy; p.x += p.vx; p.ang = Math.atan2(p.vy, p.vx);
         if (p.y >= 0){ p.y = 0; p.vx = 0; p.armed = true; p.t0 = p.t; p.hit.clear();
-          if (p.bhole){ const b = p.bhole; proj({kind:'bhole', owner:p.owner, x:p.x, z:p.z, y:-50, life:b.life, every:b.every, maxHits:b.hits, pierce:true, hitR:b.r*.55, hitZ:50, dmg:b.dmg, kb:.2, stun:24, pull:b.r, size:b.size, lastLaunch:-8, sk:p.sk}); p.dead = true; SFX.heavy(); continue; }
+          if (p.bhole){ const b = p.bhole; proj({kind:'bhole', owner:p.owner, x:p.x, z:p.z, y:-50, life:b.life, every:b.every, maxHits:b.hits, pierce:true, unblock:true, hitR:b.r*.6, hitZ:60, dmg:b.dmg, kb:.2, stun:24, pull:b.r, size:b.size, lastLaunch:-8, sk:p.sk}); p.dead = true; SFX.heavy(); continue; }
+          if (p.gas){ proj({kind:'gas', owner:p.owner, x:p.x, z:p.z, life:p.gas, every:20, pierce:true, hitR:p.aoe, hitZ:p.aoe*.5, dmg:4, kb:0, stun:6, poison:150, sk:p.sk}); }
           p.life = p.t + p.every*p.hits + 6; p.hitR = p.aoe; p.hitZ = Math.max(40, p.aoe*.45); p.maxHits = p.hits; p.pierce = true; shake = Math.max(shake, 6); SFX.heavy(); dust(p.x, p.z, 10);
           for (let i=0;i<18;i++){ const a = rnd(0,6.28); particles.push({x:p.x + Math.cos(a)*rnd(5, p.aoe*.7), y:G.st.FT + p.z - rnd(0,40), vx:Math.cos(a)*rnd(1,4), vy:-rnd(1,5), life:26, max:26, col: i%3 ? p.col : '#ffffff', kind: p.freeze ? 'shard2' : 'fire'}); } } }
       else if (p.t % 3 === 0) particles.push({x:p.x + rnd(-p.aoe*.6, p.aoe*.6), y:G.st.FT + p.z - rnd(0,30), vx:0, vy:-rnd(1,3), life:16, max:16, col:p.col, kind: p.freeze ? 'shard2' : 'fire'});
@@ -1389,6 +1391,7 @@ function updateFx(){
     if (p.kind === 'rockv'){ const o = p.owner; if (p.t < 22){ p.x = o.x + p.face*60; p.z = o.z; p.vx = 0; p.armed = false; } else { p.vx = p.face*6.5; p.armed = true; } }
     if (p.kind === 'chopspin'){ const o = p.owner; p.x = o.x; p.z = o.z; if (p.t > p.life || !o.alive()) p.dead = true; continue; }
     if (p.kind === 'prop'){ if (p.t > p.life) p.dead = true; continue; }
+    if (p.kind === 'gas' && p.t % 2 === 0) particles.push({x:p.x + rnd(-p.hitR, p.hitR), y:G.st.FT + p.z - rnd(0, 70), vx:rnd(-.6,.6), vy:-rnd(.2,1), life:40, max:40, col:`rgba(${120 + rnd(0,40)|0},255,${60 + rnd(0,40)|0},.55)`, kind:'smoke', s:rnd(14,26)});
     if (p.kind === 'eburst'){ if (p.t % 2 === 0) particles.push({x:p.x + rnd(-p.hitR, p.hitR), y:G.st.FT + p.z - rnd(10, 140), vx:rnd(-2,2), vy:rnd(-2,2), life:10, max:10, col: Math.random() < .5 ? '#9ff4ff' : '#ffffff', kind:'spark'}); }
     if (p.kind === 'vehicle'){
       if (p.nohit){ if (p.parked) p.vx = 0; else if ((p.x - p.stopX)*Math.sign(p.vx) >= 0){ p.parked = true; p.vx = 0; dust(p.x, p.z, 10); } p.x += p.vx; if (p.t > p.life) p.dead = true; continue; }
@@ -1572,7 +1575,9 @@ function drawFx(p){
       ctx.lineWidth = 1.5; ctx.strokeStyle = '#c98a1a'; ctx.strokeText(p.ch, 0, 0);
       break; }
     case 'emitter': break;
-    case 'lob': { if (!p.armed){ vimg(p.img, gx, gy + p.y, p.h, p.spin ? t*.4 : p.ang, false); ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(gx, gy, 14, 5, 0, 0, 7); ctx.fill(); break; }
+    case 'gas': { const k = Math.min(1, t/8, (p.life - t)/14); ctx.globalAlpha = k*.5; const g = ctx.createRadialGradient(gx, gy - 30, 6, gx, gy - 30, p.hitR); g.addColorStop(0, 'rgba(160,255,80,.8)'); g.addColorStop(1, 'rgba(60,140,20,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(gx, gy - 30, p.hitR, p.hitR*.55, 0, 0, 7); ctx.fill(); break; }
+    case 'lob': if (!p.armed && p.img === 'canister'){ ctx.translate(gx, gy + p.y); ctx.rotate(t*.3); ctx.fillStyle = '#5a6a5a'; ctx.strokeStyle = '#1a2a1a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.roundRect(-9, -20, 18, 40, 6); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#8aff4a'; ctx.fillRect(-6, -12, 12, 24); ctx.fillStyle = '#2a3a2a'; ctx.fillRect(-10, -22, 20, 5); ctx.fillRect(-10, 17, 20, 5); break; }
+      { if (!p.armed){ vimg(p.img, gx, gy + p.y, p.h, p.spin ? t*.4 : p.ang, false); ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(gx, gy, 14, 5, 0, 0, 7); ctx.fill(); break; }
       const k = Math.max(0, 1 - (t - p.t0)/(p.every*p.hits + 6)), R = p.aoe*(1 + (1 - k)*.3);
       ctx.globalCompositeOperation = 'lighter'; const gr = ctx.createRadialGradient(gx, gy - 20, 4, gx, gy - 20, R); gr.addColorStop(0, '#ffffff'); gr.addColorStop(.35, p.col); gr.addColorStop(1, 'rgba(0,0,0,0)'); ctx.globalAlpha = k; ctx.fillStyle = gr; ctx.beginPath(); ctx.ellipse(gx, gy - 20, R, R*.75, 0, 0, 7); ctx.fill(); break; }
     case 'bhole': { const k = Math.min(1, t/8, (p.life - t)/8), s = p.size*(.7 + .3*k) * (1 + Math.sin(t*.5)*.04);
@@ -2246,11 +2251,12 @@ function aiInput(u){
       u.cool = L.react + rnd(0, L.react);
       const threat = adx < 140 && adz < 30 && (o.state === 'atk' || o.state === 'sp' || o.state === 'charge');
       const incoming = fx.some(p => p.owner.team !== u.team && p.vx && Math.sign(p.vx) === Math.sign(u.x - p.x) && Math.abs(p.x-u.x) < 170 && Math.abs(p.z-u.z) < 30);
-      if ((threat || incoming) && Math.random() < L.guard){ u.plan = { m: incoming && Math.random() < .5 ? 'dodge' : 'guard', until: G.frame + 24 }; return out; }
+      if ((threat || incoming) && Math.random() < L.guard && !u.hero.superArmor){ u.plan = { m: incoming && Math.random() < .5 ? 'dodge' : 'guard', until: G.frame + 24 }; return out; }
       if (Math.random() < L.skill && u.can()){
         const sk = u.hero.sk; let c = null;
         if (u.id === 'ayu' && allies(u).some(a => a.hp < a.maxhp*.5 && Math.abs(a.x-u.x) < 220)) c = 'd';
         else if ((u.id === 'brute') && adx > 150 && adx < 320 && adz < 30 && Math.random() < .6) c = 'd';
+        else if (u.id === 'brute' && adx > 300 && u.mp >= 60 && Math.random() < .5){ u.face = out.faceTo; out.ev.push('D'); return out; }
         else if (u.id === 'taoist' && adx > 140 && adx < 420 && Math.random() < .5) c = Math.random() < .5 ? 'f' : 'u';
         else if (u.id === 'lord' && G.units.filter(v => v.master === u && v.alive() && v.hitsLeft > 1).length < 2 && Math.random() < .5) c = 'f';
         else if ((u.id === 'ninja') && G.units.filter(v => v.master === u && v.id === 'nclone' && v.hitsLeft > 1).length < 2 && u.mp >= 150 && Math.random() < .5) c = 'u';
@@ -3141,7 +3147,7 @@ function drawHelp(){
     ['Attack (tap 3× for a combo)', 'J', 'Red fist'],
     ['Jump · attack in the air', 'K', 'Orange'],
     ['Jump dash (3 charges, 3 s to refill each)', 'K again in the air (+ ← / →)', 'Jump twice'],
-    ['Defend (hold)', 'L', 'Green shield'],
+    ['Defend (hold) · Gorgrim: Bio Canister', 'L', 'Green shield'],
     ['Run · dash attack', 'Double-tap ← / →, then J', 'Push the stick twice'],
     ['Skill 1 · 2 · 3', 'U I O  or  L+→J, L+↑J, L+↓J', 'Blue skill buttons'],
     ['Ride a free raptor · get off', 'K next to it · K again', 'Jump next to it'],
