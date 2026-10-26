@@ -508,7 +508,7 @@ class Unit {
     if (this.comboPop > 0) this.comboPop--;
     if (this.swapCd > 0) this.swapCd--;
     if (this.webT > 0) this.webT--;
-    if (this.painT > 0 && --this.painT === 0){ this.invT = 30; if (this.state === 'hurt') this.set('idle'); }
+    if (this.painT > 0){ this.vx *= .5; this.run = 0; if (this.hp > 0 && !this.dead && this.state !== 'hurt' && this.state !== 'held'){ if (this.grabbed) releaseHeld(this); this.set('hurt'); this.y = 0; this.vy = 0; } this.stunT = 9999; if (--this.painT === 0){ this.invT = 30; this.stunT = 0; if (this.state === 'hurt') this.set('idle'); } }
     if (this.dashN < 3 && ++this.dashCd >= 180){ this.dashN++; this.dashCd = 0; } else if (this.dashN >= 3) this.dashCd = 0;
     if (this.dashT && this.state !== 'jump') this.dashT = 0;
     if (this.charm > 0 && --this.charm === 0){ if (this.charmTeam != null){ this.team = this.charmTeam; this.charmTeam = null; } this.tgt = null; this.retarget = 0; }
@@ -782,7 +782,7 @@ function applyHit(def, dir, a, src, hx, hy){
   if (def.hero && def.hero.superArmor && def.hp > 0 && !def.summon){
     def.flash = 4; sparks(hx, hy, '#ffd27a', 6);
     if (!(def.painT > 0)) def.painAcc = (def.painAcc || 0) + 1;
-    if (def.painAcc >= 5 && def.state !== 'sp' && def.state !== 'ult'){ def.painAcc = 0; if (def.grabbed) releaseHeld(def); def.set('hurt'); def.stunT = 60; def.painT = 60; def.vx = dir*1.5; floatText(def, 'Pain!', '#ffb070'); SFX.heavy(); }
+    if (def.painAcc >= 5 && def.state !== 'ult'){ def.painAcc = 0; if (def.grabbed) releaseHeld(def); def.set('hurt'); def.stunT = 9999; def.painT = 61; def.vx = dir*1.5; fx.filter(p => p.owner === def && ['hook','chopspin'].includes(p.kind)).forEach(p => p.dead = true); floatText(def, 'Pain!', '#ffb070'); SFX.heavy(); }
     return true;
   }
   const heavyUnit = SOLDIER[def.kind] && SOLDIER[def.kind].heavy;
@@ -1906,6 +1906,7 @@ function drawUnit(u){
     for (let i=0;i<5;i++){ x = gx + rnd(-28,28); y += u.h/5; ctx.lineTo(x, y); } ctx.stroke();
   }
   if (u.armor > 0 && t % 4 === 0) particles.push({x:u.x + rnd(-u.h*.3, u.h*.3), y:sy(u) - rnd(10, u.h*1.1), vx:0, vy:-rnd(.5,1.5), life:18, max:18, col:'#ffb347', kind:'fire'});
+  if (u.painT > 0){ ctx.save(); ctx.fillStyle = '#ffe27a'; ctx.font = '900 16px ' + UIF; ctx.textAlign = 'center'; for (let i=0;i<3;i++){ const a = t*.15 + i*2.09; ctx.fillText('★', gx + Math.cos(a)*30, gy + u.y - u.h*1.02 + Math.sin(a)*8); } ctx.restore(); }
   if (u.webT > 0) vimg('vfx_web', gx, gy + u.y - u.h*.5, u.h*.95, Math.sin(t*.1)*.1, false, .85);
   if (u.hold > 0 && u.psy){ ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = `rgba(190,110,255,${.5 + .3*Math.sin(t*.4)})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(gx, gy + u.y - u.h*.5, 40, u.h*.6, 0, 0, 7); ctx.stroke(); ctx.restore(); }
   if (u.charm > 0){ const im = IMG.vfx_talis, m = META.vfx_talis; if (ok(im)){ const h = 34, w = h*m.w/m.h; ctx.save(); ctx.translate(gx, gy + u.y - u.h*.98); ctx.rotate(Math.sin(t*.2)*.15); ctx.drawImage(im, -w/2, 0, w, h); ctx.restore(); }
@@ -3442,7 +3443,7 @@ function drawStoryResult(r){
 /* ================= online (WebRTC via PeerJS) ================= */
 let ONLINE_START = null;
 const NET = { role:null, peer:null, ctl:null, fast:null, code:'', connected:false, msg:'', mode:'versus', stage:'temple', my:null, opp:{p:'kai', team:['kai','mei','rajan','zara']}, umap:new Map(), seq:0, evBuf:[], lastEv:0, remote:{l:false,r:false,u:false,d:false,defH:false}, remEv:[], ping:0, pingT:0, joinInput:null, rematchAsked:false, lastSnap:0 };
-const U_KEYS = ['dashN','dashCd','armorMax','combo','comboT','charm','charmTeam','chg','chgOn','lives','recruit','kind','id','team','name','x','z','y','vx','vy','face','state','t','hp','maxhp','mp','sg','form','formT','buff','buffT','invT','inv','armor','frozen','shock','burn','poison','flash','squash','hide','summon','hitsLeft','lifeT','riding','seed','h','color','lv','jAtk','jT','stunT','atkKey','spKey','deadT','dead','isPlayer','isP2','dogFire','hold','comboStep','juggle'];
+const U_KEYS = ['painT','dashN','dashCd','armorMax','combo','comboT','charm','charmTeam','chg','chgOn','lives','recruit','kind','id','team','name','x','z','y','vx','vy','face','state','t','hp','maxhp','mp','sg','form','formT','buff','buffT','invT','inv','armor','frozen','shock','burn','poison','flash','squash','hide','summon','hitsLeft','lifeT','riding','seed','h','color','lv','jAtk','jT','stunT','atkKey','spKey','deadT','dead','isPlayer','isP2','dogFire','hold','comboStep','juggle'];
 const RND1 = v => typeof v === 'number' ? Math.round(v*10)/10 : v;
 function loadPeer(){
   return new Promise((res, rej) => { if (window.Peer) return res(); const s = document.createElement('script'); s.src = window.SC_PEERJS || 'https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js'; s.onload = () => res(); s.onerror = () => rej(new Error('Could not load the online module. Check your internet connection.')); document.head.appendChild(s); });
@@ -3724,7 +3725,7 @@ function frameInner(now){
 }
 resize();
 (document.fonts ? Promise.race([document.fonts.load('20px "Lilita One"'), new Promise(r => setTimeout(r, 1500))]) : Promise.resolve()).then(() => requestAnimationFrame(frame));
-window.__SC = { NET, netHost, netJoin, netStartMatch, dbg:{ STORY, MISSIONS, stepFight, SPEC, ULT, HEROES, MUL, startUlt, throwHeld, setNoPro: v => NOPRO = v, fx }, S, get G(){ return G; }, startMission, storyStart, startBattle, startVersus, SAVE, hire, ANIM };
+window.__SC = { NET, netHost, netJoin, netStartMatch, dbg:{ STORY, MISSIONS, stepFight, SPEC, ULT, HEROES, MUL, startUlt, throwHeld, applyHit, setNoPro: v => NOPRO = v, fx }, S, get G(){ return G; }, startMission, storyStart, startBattle, startVersus, SAVE, hire, ANIM };
 })();
 </script>
 
