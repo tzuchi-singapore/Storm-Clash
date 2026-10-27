@@ -531,6 +531,7 @@ class Unit {
     if (this.swapCd > 0) this.swapCd--;
     if (this.webT > 0) this.webT--;
     if (this.slowT > 0) this.slowT--;
+    if (this.painCd > 0) this.painCd--;
     if (this.painT > 0){ this.vx *= .5; this.run = 0; if (this.hp > 0 && !this.dead && this.state !== 'hurt' && this.state !== 'held'){ if (this.grabbed) releaseHeld(this); this.set('hurt'); this.y = 0; this.vy = 0; } this.stunT = 9999; if (--this.painT === 0){ this.invT = 30; this.stunT = 0; if (this.state === 'hurt') this.set('idle'); } }
     if (this.dashN < 3 && ++this.dashCd >= 180){ this.dashN++; this.dashCd = 0; } else if (this.dashN >= 3) this.dashCd = 0;
     if (this.dashT && this.state !== 'jump') this.dashT = 0;
@@ -772,6 +773,7 @@ class Unit {
 function mountUnit(x, z){ return new Unit({ kind:'mount', team:-1, name:'Raptor', hp:1, spd:5, pow:1, h:112, x, z, face:1, color:'#ffd27a' }); }
 function nearMount(u){ return G.units.find(m => m.kind === 'mount' && !m.dead && Math.abs(m.x - u.x) < 64 && Math.abs(m.z - u.z) < 28); }
 
+const ARMORED = u => !!((u.hero && u.hero.superArmor) || u.holdBoss);
 function applyHit(def, dir, a, src, hx, hy){
   if (!def.hittable()) return false;
   if (def.team === 1 && G && (G.mode === 'mission' || G.mode === 'battle')) def.entered = true;
@@ -800,7 +802,7 @@ function applyHit(def, dir, a, src, hx, hy){
   if (a.burn) def.burn = Math.max(def.burn, a.burn);
   if (a.shock){ def.shock = Math.max(def.shock, a.shock); }
   if (a.poison) def.poison = Math.max(def.poison, a.poison);
-  if (a.charm && src && def.kind !== 'fort' && def.kind !== 'boss' && !def.summon && def.hp > 0){
+  if (a.charm && src && def.kind !== 'fort' && def.kind !== 'boss' && !def.holdBoss && !def.summon && def.hp > 0){
     if (def.charmTeam == null) def.charmTeam = def.team; def.team = src.team; def.charm = a.charm; def.tgt = null; def.retarget = 0;
     floatText(def, 'Charmed!', '#ffcf3a'); for (let i=0;i<10;i++) particles.push({x:def.x + rnd(-14,14), y:sy(def) - def.h - rnd(0,20), vx:rnd(-1,1), vy:-rnd(.5,1.5), life:24, max:24, col:'#ffcf3a', kind:'spark'}); }
   if (def.state === 'ult' && def.hp - dmg*.5 > 0){ def.hp -= dmg*.5; sparks(hx, hy, '#ffe680', 9); SFX.block(); return true; }
@@ -810,10 +812,10 @@ function applyHit(def, dir, a, src, hx, hy){
   if (src && src.vamp && src.hp > 0 && !src.dead) src.hp = Math.min(src.maxhp, src.hp + dmg*src.vamp);
   { const ls = src && (src.summon ? src.master : src); if (ls && ls.form === 'xevil' && ls.hp > 0 && !ls.dead && !def.summon) ls.hp = Math.min(ls.maxhp, ls.hp + ls.maxhp*.01); }
   if (def.thorns && src && src !== def && !a.kind && src.kind !== 'fort' && src.hp > 1){ src.hp = Math.max(1, src.hp - dmg*def.thorns); src.flash = 4; sparks(src.x, sy(src) - src.h*.5, '#c8a060', 5); }
-  if (def.hero && def.hero.superArmor && def.hp > 0 && !def.dead){
+  if (ARMORED(def) && def.hp > 0 && !def.dead){
     def.flash = 4; sparks(hx, hy, '#ffd27a', 6);
-    if (!(def.painT > 0)) def.painAcc = (def.painAcc || 0) + 1;
-    if (def.painAcc >= 5 && def.state !== 'ult'){ def.painAcc = 0; if (def.grabbed) releaseHeld(def); def.set('hurt'); def.stunT = 9999; def.painT = 91; def.vx = dir*1.5; fx.filter(p => p.owner === def && ['hook','chopspin'].includes(p.kind)).forEach(p => p.dead = true); floatText(def, 'Pain!', '#ffb070'); SFX.heavy(); }
+    if (!(def.painT > 0) && !(def.holdBoss && (def.painCd > 0 || !src || src.kind !== 'hero'))) def.painAcc = (def.painAcc || 0) + 1;
+    if (def.painAcc >= (def.holdBoss ? 10 : 5) && def.state !== 'ult'){ if (def.holdBoss) def.painCd = 300; def.painAcc = 0; if (def.grabbed) releaseHeld(def); def.set('hurt'); def.stunT = 9999; def.painT = def.holdBoss ? 40 : 91; def.vx = dir*1.5; fx.filter(p => p.owner === def && ['hook','chopspin'].includes(p.kind)).forEach(p => p.dead = true); floatText(def, 'Pain!', '#ffb070'); SFX.heavy(); }
     return true;
   }
   const heavyUnit = SOLDIER[def.kind] && SOLDIER[def.kind].heavy;
@@ -1051,7 +1053,7 @@ Object.assign(SPEC, {
   },
   vraxx: {
     f:{dur:36, pose:'sk_f', tick(m,t){ m.vx = 0; if (t===12){ const tx = aimX(m, 260); lob(m, 'vfx_abomb', tx, 26, {y:-70, bhole:{life:52, every:15, hits:3, dmg:12, r:180, size:120}, h:34, spin:true}); SFX.arrow(); } }},
-    u:{dur:40, pose:'sk_u', tick(m,t){ m.vx = 0; if (t===10){ let n = 0; for (const f of foes(m)){ if (!f.hittable() || f.kind === 'fort' || f.kind === 'boss' || (f.hero && f.hero.superArmor) || Math.abs(f.x - m.x) > 230 || Math.abs(f.z - m.z) > 90) continue;
+    u:{dur:40, pose:'sk_u', tick(m,t){ m.vx = 0; if (t===10){ let n = 0; for (const f of foes(m)){ if (!f.hittable() || f.kind === 'fort' || f.kind === 'boss' || ARMORED(f) || Math.abs(f.x - m.x) > 230 || Math.abs(f.z - m.z) > 90) continue;
         if (applyHit(f, f.x >= m.x ? 1 : -1, {dmg:12, kb:0, stun:30, sk:'vraxx.u'}, m) && f.hp > 0 && !f.dead){ if (f.riding) f.dismount(true); f.set('fall'); f.y = -90 - rnd(0,30); f.vy = 0; f.vx = 0; f.hold = 120; f.psy = true; n++; } }
         ring(m.x, sy(m) - 60, '#c08aff'); SFX.skill(); for (let i=0;i<24;i++){ const a = i/24*6.28; particles.push({x:m.x + Math.cos(a)*40, y:sy(m) - 60 + Math.sin(a)*30, vx:Math.cos(a)*5, vy:Math.sin(a)*3, life:24, max:24, col:'#c08aff', kind:'spark'}); } } }},
     d:{dur:56, pose:(m)=> m.t < 28 ? ['atk1','atk2','atk3'][Math.floor(m.t/8) % 3] : 'sk_d', tick(m,t){ xianCombo(m, t, 3, 13, '#7ae0ff'); if (t===32) proj({kind:'eburst', owner:m, x:m.x + m.face*90, z:m.z, life:22, every:8, maxHits:2, pierce:true, hitR:120, hitZ:44, dmg:12, kb:3, stun:30, shock:60, size:150, lastLaunch:-7}); }},
@@ -1188,7 +1190,7 @@ function vanish(u){
 function grabTry(m, R, big){
   if (m.grabbed || m.state !== 'sp') return;
   for (const o of foes(m)){
-    if (!o.hittable() || o.kind === 'fort' || o.kind === 'boss' || o.state === 'held' || (o.hero && o.hero.superArmor)) continue;
+    if (!o.hittable() || o.kind === 'fort' || o.kind === 'boss' || o.state === 'held' || ARMORED(o)) continue;
     const dx = (o.x - m.x)*m.face; if (dx < 10 || dx > R || Math.abs(o.z - m.z) > 30 || o.y < -90) continue;
     if (o.state === 'defend' && o.face === -m.face){ applyHit(o, m.face, {dmg:8, kb:2, stun:10, sk:m.sid + '.d'}, m); continue; }
     applyHit(o, m.face, {dmg: big ? 22 : 14, kb:0, stun:30, shock:30, sk:m.sid + '.d'}, m, o.x, sy(o) - o.h*.55);
@@ -1449,7 +1451,7 @@ function updateFx(){
     if (p.kind === 'bhole' || p.kind === 'ufo'){
       const R = p.kind === 'ufo' ? 150 : p.pull, act = p.kind === 'ufo' ? p.t >= 18 && p.t < p.life - 6 : true;
       if (p.kind === 'ufo') p.armed = act;
-      if (act) for (const f of foes(p.owner)){ if (f.kind === 'fort' || !f.hittable() || (f.hero && f.hero.superArmor) || Math.abs(f.x - p.x) > R || Math.abs(f.z - p.z) > 70) continue; f.x += Math.sign(p.x - f.x)*Math.min(2.6, Math.abs(p.x - f.x)*.12); f.z += (p.z - f.z)*.08; if (p.kind === 'ufo' && f.y > -60 && f.state !== 'held') f.y -= .6; }
+      if (act) for (const f of foes(p.owner)){ if (f.kind === 'fort' || !f.hittable() || ARMORED(f) || Math.abs(f.x - p.x) > R || Math.abs(f.z - p.z) > 70) continue; f.x += Math.sign(p.x - f.x)*Math.min(2.6, Math.abs(p.x - f.x)*.12); f.z += (p.z - f.z)*.08; if (p.kind === 'ufo' && f.y > -60 && f.state !== 'held') f.y -= .6; }
       if (p.kind === 'ufo'){ if (p.t % 2 === 0) particles.push({x:p.x + rnd(-R*.6, R*.6), y:G.st.FT + p.z - rnd(10, 260), vx:0, vy:-2, life:14, max:14, col: Math.random() < .5 ? '#c08aff' : '#6a3aff', kind:'spark'}); }
       else if (p.t < p.life - 8) for (let i=0;i<2;i++){ const a = rnd(0, 6.28), r = p.size*rnd(.9, 1.4), cx = p.x, cy = G.st.FT + p.z + p.y; particles.push({x:cx + Math.cos(a)*r, y:cy + Math.sin(a)*r*.5, vx:-Math.cos(a)*r/12 - Math.sin(a)*2, vy:-Math.sin(a)*r*.5/12 + Math.cos(a), life:12, max:12, col: Math.random() < .5 ? '#ffd090' : '#b080ff', kind:'spark'}); }
     }
@@ -1475,7 +1477,7 @@ function updateFx(){
       if (!p.back){ p.x += p.dir*17; if (Math.abs(p.x - o.x) > 340) p.back = true;
         for (const f of foes(o)){ if (!f.hittable() || f.kind === 'fort' || Math.abs(f.x - p.x) > 36 || Math.abs(f.z - p.z) > 36 || f.y < -120) continue;
           p.back = true;
-          if (f.kind === 'boss' || (f.hero && f.hero.superArmor) || f.kind === 'rider' || f.state === 'held' || (f.state === 'defend' && f.face === -p.dir)){ applyHit(f, p.dir, {dmg:10, kb:2, stun:14, sk:p.sk}, o); break; }
+          if (f.kind === 'boss' || ARMORED(f) || f.kind === 'rider' || f.state === 'held' || (f.state === 'defend' && f.face === -p.dir)){ applyHit(f, p.dir, {dmg:10, kb:2, stun:14, sk:p.sk}, o); break; }
           applyHit(f, p.dir, {dmg:12, kb:0, stun:50, sk:p.sk}, o, f.x, sy(f) - f.h*.55); if (f.hp > 0 && !f.dead) p.caught = f; break; } }
       else { const hx = o.x + o.face*44; p.x += (hx - p.x)*.32; const c = p.caught; if (c && !c.dead && c.hp > 0){ c.x = p.x + o.face*20; c.z += (o.z - c.z)*.3; c.vx = 0; c.y = 0; }
         if (Math.abs(p.x - hx) < 22){ p.dead = true; if (c && !c.dead && c.hp > 0) hookGrab(o, c); } }
@@ -1491,7 +1493,7 @@ function updateFx(){
       p.ang = Math.atan2(dy, dx); p.x += dx/d*Math.min(sp, d); p.y += dy/d*Math.min(sp, d); p.z += (f.z - p.z)*.2;
       if (p.t % 2 === 0) particles.push({x:p.x, y:G.st.FT + p.z + p.y, vx:0, vy:0, life:8, max:8, col: p.kind === 'tfrost' ? '#bff4ff' : '#fff6c8', kind:'spark'});
       if (d < 18){ p.dead = true; if (f.hittable()){ applyHit(f, dx >= 0 ? 1 : -1, {dmg:p.dmg, kb: p.kind === 'tarrow' ? 1 : .4, stun:8}, p.owner, f.x, sy(f) - f.h*.55);
-          if (p.kind === 'tfrost'){ f.slowT = 120 + p.lv*30; if (p.lv >= 3) f.frozen = Math.max(f.frozen||0, 30); if (p.lv >= 2){ for (const o of G.units) if (o !== f && o.team === 1 && o.alive() && Math.abs(o.x - f.x) < 90 && Math.abs(o.z - f.z) < 50){ o.slowT = Math.max(o.slowT||0, 120); if (o.hittable()) applyHit(o, 1, {dmg:p.dmg*.5, kb:0, stun:6}, p.owner, o.x, sy(o) - o.h*.55); } particles.push({x:f.x, y:G.st.FT + f.z, life:18, max:18, col:'#bff4ff', kind:'healring'}); } for (let i=0;i<8;i++) particles.push({x:f.x + rnd(-12,12), y:sy(f) - rnd(10, f.h), vx:rnd(-2,2), vy:-rnd(0,2), life:20, max:20, col:'#e6fbff', kind:'shard2'}); } } }
+          if (p.kind === 'tfrost'){ f.slowT = 120 + p.lv*30; if (p.lv >= 3 && !f.holdBoss) f.frozen = Math.max(f.frozen||0, 30); if (p.lv >= 2){ for (const o of G.units) if (o !== f && o.team === 1 && o.alive() && Math.abs(o.x - f.x) < 90 && Math.abs(o.z - f.z) < 50){ o.slowT = Math.max(o.slowT||0, 120); if (o.hittable()) applyHit(o, 1, {dmg:p.dmg*.5, kb:0, stun:6}, p.owner, o.x, sy(o) - o.h*.55); } particles.push({x:f.x, y:G.st.FT + f.z, life:18, max:18, col:'#bff4ff', kind:'healring'}); } for (let i=0;i<8;i++) particles.push({x:f.x + rnd(-12,12), y:sy(f) - rnd(10, f.h), vx:rnd(-2,2), vy:-rnd(0,2), life:20, max:20, col:'#e6fbff', kind:'shard2'}); } } }
       continue; }
     if (p.kind === 'zap'){ if (p.t > p.life) p.dead = true; continue; }
     if (p.kind === 'tshot'){ const t = p.tw, tx = t.x, ty = -100, dx = tx - p.x, dy = ty - p.y, d = Math.hypot(dx, dy); p.ang = Math.atan2(dy, dx); p.x += dx/d*Math.min(13, d); p.y += dy/d*Math.min(13, d); p.z += (t.z - p.z)*.2;
