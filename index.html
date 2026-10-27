@@ -673,7 +673,7 @@ class Unit {
         this.vx = 0;
         if (this.t === 18 && this.kind === 'bomber'){ lob(this, 'td_bomb', this.btx != null ? this.btx : this.x - 260, 30, {y:-70, x0:this.x - 20, tz:this.btz, aoe:75, hits:1, every:8, dmg:16, col:'#ffb43a', h:26, spin:true, siege:true}); SFX.arrow(); }
         else if (this.t === 18 && this.kind === 'shaman'){ ring(this.x, sy(this) - 50, '#7dff9a'); SFX.heal(); for (const a of G.units) if (a.team === this.team && a.alive() && a.kind !== 'fort' && a !== this && Math.abs(a.x - this.x) < 180 && Math.abs(a.z - this.z) < 80 && a.hp < a.maxhp){ const hv = Math.round(a.maxhp*.2); a.hp = Math.min(a.maxhp, a.hp + hv); floatText(a, '+' + hv, '#7dff9a'); for (let i=0;i<6;i++) particles.push({x:a.x + rnd(-14,14), y:sy(a) - rnd(10, a.h), vx:0, vy:-rnd(.6,1.6), life:26, max:26, col:'#7dff9a', kind:'plus'}); } }
-        else if (this.t === 18 && this.shootTower){ const t = this.shootTower; this.shootTower = null; proj({kind:'tshot', laser:this.kind === 'trooper', owner:this, tw:t, x:this.x + this.face*30, z:this.z, y:-56, life:90, dmg:10, nohit:true}); SFX.arrow(); }
+        else if (this.t === 18 && this.shootTower){ const t = this.shootTower; this.shootTower = null; proj({kind:'tshot', laser:this.kind === 'trooper', owner:this, tw:t, x:this.x + this.face*30, z:this.z, y:-56, life:90, dmg:20, nohit:true}); SFX.arrow(); }
         else if (this.t === 18){ proj({kind:'arrow', laser:this.kind === 'trooper', owner:this, x:this.x + this.face*40, z:this.z, y:-56, vx:this.face*(this.kind === 'trooper' ? 13 : 10.5), dmg:13, kb:2, stun:12, r:12, life:110}); SFX.arrow(); }
         if (this.t >= 36) this.set('idle');
         break;
@@ -1437,8 +1437,10 @@ function updateFx(){
       if (!p.armed){ p.vy += p.g; p.y += p.vy; p.x += p.vx; p.ang = Math.atan2(p.vy, p.vx);
         if (p.y >= 0){ p.y = 0; p.vx = 0; p.armed = true; p.t0 = p.t; p.hit.clear();
           if (p.bhole){ const b = p.bhole; proj({kind:'bhole', owner:p.owner, x:p.x, z:p.z, y:-50, life:b.life, every:b.every, maxHits:b.hits, pierce:true, unblock:true, hitR:b.r*.6, hitZ:60, dmg:b.dmg, kb:.2, stun:24, pull:b.r, size:b.size, lastLaunch:-8, sk:p.sk}); p.dead = true; SFX.heavy(); continue; }
+          if (p.fire) proj({kind:'firepatch', owner:p.owner, x:p.x, z:p.z, life:100, every:24, maxHits:4, pierce:true, hitR:p.aoe*.8, hitZ:p.aoe*.4, dmg:5, kb:0, stun:4, burn:90});
+          if (p.cluster) for (let i=0;i<3;i++){ const tx = p.x + rnd(-110, 110); lob(p.owner, 'vfx_shell', tx, 22, {y:-10, x0:p.x, z0:p.z, tz:Math.max(8, Math.min(ZMAX()-8, p.z + rnd(-40, 40))), aoe:52, hits:1, every:8, dmg:p.dmg*.45, col:'#ffb070', h:14, spin:true, kb:3, launch:-4}); }
           if (p.gas){ proj({kind:'gas', owner:p.owner, x:p.x, z:p.z, life:p.gas, every:20, pierce:true, hitR:p.aoe, hitZ:p.aoe*.5, dmg:4, kb:0, stun:6, poison:150, sk:p.sk}); }
-          p.vz = 0; if (p.siege && G.mode === 'hold'){ for (const t of (G.towers || [])) if (t.hp > 0 && Math.abs(t.x - p.x) < 90){ t.hp -= 14; t.flash = 8; if (t.hp <= 0) towerDestroyed(t); } if (G.fort && p.x < G.fort.x + 160){ G.fort.hp = Math.max(0, G.fort.hp - 3); G.fort.flash = 6; } }
+          p.vz = 0; if (p.siege && G.mode === 'hold'){ for (const t of (G.towers || [])) if (t.hp > 0 && Math.abs(t.x - p.x) < 90){ t.hp -= 28; t.flash = 8; if (t.hp <= 0) towerDestroyed(t); } if (G.fort && p.x < G.fort.x + 160){ G.fort.hp = Math.max(0, G.fort.hp - 3); G.fort.flash = 6; } }
           p.life = p.t + p.every*p.hits + 6; p.hitR = p.aoe; p.hitZ = Math.max(40, p.aoe*.45); p.maxHits = p.hits; p.pierce = true; shake = Math.max(shake, 6); SFX.heavy(); dust(p.x, p.z, 10);
           for (let i=0;i<18;i++){ const a = rnd(0,6.28); particles.push({x:p.x + Math.cos(a)*rnd(5, p.aoe*.7), y:G.st.FT + p.z - rnd(0,40), vx:Math.cos(a)*rnd(1,4), vy:-rnd(1,5), life:26, max:26, col: i%3 ? p.col : '#ffffff', kind: p.freeze ? 'shard2' : 'fire'}); } } }
       else if (p.t % 3 === 0) particles.push({x:p.x + rnd(-p.aoe*.6, p.aoe*.6), y:G.st.FT + p.z - rnd(0,30), vx:0, vy:-rnd(1,3), life:16, max:16, col:p.col, kind: p.freeze ? 'shard2' : 'fire'});
@@ -1459,6 +1461,8 @@ function updateFx(){
         if (cur.length >= 2){ const v = cur[p.idx % cur.length]; Object.assign(v, {hitsLeft:3, lifeT:900, x:p.x, z:p.z}); v.flash = 10; } else summon(o, 'hatch', p.x, p.z, {hitsLeft:3, lifeT:900});
         for (let i=0;i<12;i++) particles.push({x:p.x + rnd(-10,10), y:G.st.FT + p.z - rnd(0,30), vx:rnd(-3,3), vy:-rnd(1,4), life:20, max:20, col: i%2 ? '#a0ff6a' : '#d04aff', kind:'spark'}); SFX.hit(); }
       continue; }
+    if (p.kind === 'firepatch' && p.t % 3 === 0 && p.t < p.life - 6) particles.push({x:p.x + rnd(-p.hitR, p.hitR), y:G.st.FT + p.z - rnd(0, 20), vx:rnd(-.3,.3), vy:-rnd(1,2.4), life:20, max:20, col: Math.random() < .5 ? '#ffb43a' : '#ff5a2a', kind:'fire'});
+    if (p.kind === 'blizz'){ if (p.t > p.life) p.dead = true; continue; }
     if (p.kind === 'gas' && p.t % 2 === 0) particles.push({x:p.x + rnd(-p.hitR, p.hitR), y:G.st.FT + p.z - rnd(0, 70), vx:rnd(-.6,.6), vy:-rnd(.2,1), life:40, max:40, col:`rgba(${120 + rnd(0,40)|0},255,${60 + rnd(0,40)|0},.55)`, kind:'smoke', s:rnd(14,26)});
     if (p.kind === 'eburst'){ if (p.t % 2 === 0) particles.push({x:p.x + rnd(-p.hitR, p.hitR), y:G.st.FT + p.z - rnd(10, 140), vx:rnd(-2,2), vy:rnd(-2,2), life:10, max:10, col: Math.random() < .5 ? '#9ff4ff' : '#ffffff', kind:'spark'}); }
     if (p.kind === 'vehicle'){
@@ -1487,7 +1491,7 @@ function updateFx(){
       p.ang = Math.atan2(dy, dx); p.x += dx/d*Math.min(sp, d); p.y += dy/d*Math.min(sp, d); p.z += (f.z - p.z)*.2;
       if (p.t % 2 === 0) particles.push({x:p.x, y:G.st.FT + p.z + p.y, vx:0, vy:0, life:8, max:8, col: p.kind === 'tfrost' ? '#bff4ff' : '#fff6c8', kind:'spark'});
       if (d < 18){ p.dead = true; if (f.hittable()){ applyHit(f, dx >= 0 ? 1 : -1, {dmg:p.dmg, kb: p.kind === 'tarrow' ? 1 : .4, stun:8}, p.owner, f.x, sy(f) - f.h*.55);
-          if (p.kind === 'tfrost'){ f.slowT = 120 + p.lv*30; if (p.lv >= 3) f.frozen = Math.max(f.frozen||0, 20); for (let i=0;i<8;i++) particles.push({x:f.x + rnd(-12,12), y:sy(f) - rnd(10, f.h), vx:rnd(-2,2), vy:-rnd(0,2), life:20, max:20, col:'#e6fbff', kind:'shard2'}); } } }
+          if (p.kind === 'tfrost'){ f.slowT = 120 + p.lv*30; if (p.lv >= 3) f.frozen = Math.max(f.frozen||0, 30); if (p.lv >= 2){ for (const o of G.units) if (o !== f && o.team === 1 && o.alive() && Math.abs(o.x - f.x) < 90 && Math.abs(o.z - f.z) < 50){ o.slowT = Math.max(o.slowT||0, 120); if (o.hittable()) applyHit(o, 1, {dmg:p.dmg*.5, kb:0, stun:6}, p.owner, o.x, sy(o) - o.h*.55); } particles.push({x:f.x, y:G.st.FT + f.z, life:18, max:18, col:'#bff4ff', kind:'healring'}); } for (let i=0;i<8;i++) particles.push({x:f.x + rnd(-12,12), y:sy(f) - rnd(10, f.h), vx:rnd(-2,2), vy:-rnd(0,2), life:20, max:20, col:'#e6fbff', kind:'shard2'}); } } }
       continue; }
     if (p.kind === 'zap'){ if (p.t > p.life) p.dead = true; continue; }
     if (p.kind === 'tshot'){ const t = p.tw, tx = t.x, ty = -100, dx = tx - p.x, dy = ty - p.y, d = Math.hypot(dx, dy); p.ang = Math.atan2(dy, dx); p.x += dx/d*Math.min(13, d); p.y += dy/d*Math.min(13, d); p.z += (t.z - p.z)*.2;
@@ -1685,6 +1689,11 @@ function drawFx(p){
       break; }
     case 'emitter': break;
     case 'gas': { const k = Math.min(1, t/8, (p.life - t)/14); ctx.globalAlpha = k*.5; const g = ctx.createRadialGradient(gx, gy - 30, 6, gx, gy - 30, p.hitR); g.addColorStop(0, 'rgba(160,255,80,.8)'); g.addColorStop(1, 'rgba(60,140,20,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(gx, gy - 30, p.hitR, p.hitR*.55, 0, 0, 7); ctx.fill(); break; }
+    case 'pbolt': { ctx.translate(gx, gy + p.y); ctx.scale(Math.sign(p.vx), 1); if (!LOWFX){ ctx.globalCompositeOperation = 'lighter'; const g = ctx.createLinearGradient(-90, 0, 20, 0); g.addColorStop(0, 'rgba(120,200,255,0)'); g.addColorStop(1, 'rgba(160,230,255,.8)'); ctx.fillStyle = g; ctx.fillRect(-90, -6, 110, 12); ctx.globalCompositeOperation = 'source-over'; }
+      ctx.fillStyle = '#6a4a2a'; ctx.fillRect(-34, -3, 50, 6); ctx.fillStyle = '#dfe8f2'; ctx.beginPath(); ctx.moveTo(30, 0); ctx.lineTo(14, -9); ctx.lineTo(14, 9); ctx.fill(); ctx.fillStyle = '#c0392b'; ctx.fillRect(-36, -6, 8, 12); break; }
+    case 'firepatch': { const k = Math.min(1, t/6, (p.life - t)/12); ctx.globalAlpha = k*.55; ctx.fillStyle = '#ff7a2a'; ctx.beginPath(); ctx.ellipse(gx, gy, p.hitR, p.hitR*.32, 0, 0, 7); ctx.fill(); ctx.globalAlpha = k*.35; ctx.fillStyle = '#ffe08a'; ctx.beginPath(); ctx.ellipse(gx, gy, p.hitR*.55, p.hitR*.18, 0, 0, 7); ctx.fill(); break; }
+    case 'blizz': { const k = 1 - t/p.life, r = p.R*(.3 + .7*t/p.life); ctx.globalAlpha = k; ctx.strokeStyle = '#e6fbff'; ctx.lineWidth = 4; ctx.beginPath(); ctx.ellipse(gx, gy, r, r*.32, 0, 0, 7); ctx.stroke();
+      ctx.fillStyle = 'rgba(200,245,255,.18)'; ctx.fill(); if (!LOWFX) for (let i=0;i<10;i++){ const a = i*.628 + t*.12; ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(gx + Math.cos(a)*r, gy + Math.sin(a)*r*.32 - 6, 3, 0, 7); ctx.fill(); } break; }
     case 'tshot': { ctx.translate(gx, gy + p.y); ctx.rotate(p.ang || 0); if (p.laser){ ctx.strokeStyle = '#9ff4ff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-18, 0); ctx.lineTo(12, 0); ctx.stroke(); } else { ctx.strokeStyle = '#5a3a1a'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(-16, 0); ctx.lineTo(12, 0); ctx.stroke(); ctx.fillStyle = '#ccc'; ctx.beginPath(); ctx.moveTo(18, 0); ctx.lineTo(10, -4); ctx.lineTo(10, 4); ctx.fill(); } break; }
     case 'tarrow': { ctx.translate(gx, gy + p.y); ctx.rotate(p.ang || 0); if (p.lv >= 3){ ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = 'rgba(160,220,255,.6)'; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(-24, 0); ctx.lineTo(10, 0); ctx.stroke(); ctx.globalCompositeOperation = 'source-over'; }
       ctx.strokeStyle = '#6a4a2a'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(-18, 0); ctx.lineTo(12, 0); ctx.stroke(); ctx.fillStyle = '#e6eef6'; ctx.beginPath(); ctx.moveTo(18, 0); ctx.lineTo(9, -4); ctx.lineTo(9, 4); ctx.fill(); ctx.fillStyle = '#d04a3a'; ctx.fillRect(-18, -3, 5, 6); break; }
@@ -2192,10 +2201,10 @@ function drawMarkers(){
 
 /* ================= stage ================= */
 let menuT = 0;
-function drawStage(){
+function drawStage(scr){
   const st = G ? G.st : STAGES.forest, im = IMG[st.bg];
   if (!ok(im)) { ctx.fillStyle = '#3a5a2a'; ctx.fillRect(0,0,W,H); return; }
-  const bw = im.naturalWidth * H / im.naturalHeight, cam = G ? G.cam : (menuT*.6), vw = G ? viewW : W;
+  const bw = im.naturalWidth * H / im.naturalHeight, cam = G ? (scr ? G.cam*Z : G.cam) : (menuT*.6), vw = G && !scr ? viewW : W;
   const start = Math.floor(cam / bw);
   for (let i = start; i <= start + Math.ceil(vw/bw) + 1; i++){
     const x = i*bw - cam;
@@ -2647,12 +2656,12 @@ function battleTick(){
     if (G.fortDown){ G.phase = G.fortDown; G.pt = 0; if (G.fortDown === 'win') SFX.win(); else SFX.lose(); for (const u of G.units) if (u.alive() && u.kind === 'hero' && (u.team === 0) === (G.fortDown === 'win')) u.set('win'); }
   } else if ((G.phase === 'win' || G.phase === 'lose') && G.pt > 150) finishGame(G.phase === 'win');
 }
-const HOLD_WAVES = 10, HOLD_CAP = 11;
+const HOLD_WAVES = 10, HOLD_CAP = 10;
 const TOWERS = {
-  archer:   { name:'Archer',    col:'#9fd3ff', cost:[60, 70, 110],  range:[360, 400, 450], cd:[34, 26, 18], dmg:[12, 16, 22] },
-  cannon:   { name:'Cannon',    col:'#ffb070', cost:[90, 100, 150], range:[330, 360, 400], cd:[92, 80, 66], dmg:[26, 36, 50] },
-  frost:    { name:'Frost',     col:'#9ff4ff', cost:[70, 80, 120],  range:[300, 330, 360], cd:[70, 60, 50], dmg:[6, 9, 13] },
-  lightning:{ name:'Lightning', col:'#ffe27a', cost:[100, 110, 160],range:[300, 330, 360], cd:[84, 70, 58], dmg:[14, 20, 28] },
+  archer:   { fx:['Arrow','Twin Arrows','Ballista Bolt'], name:'Archer',    col:'#9fd3ff', cost:[60, 70, 110],  range:[360, 400, 450], cd:[34, 26, 18], dmg:[12, 16, 22] },
+  cannon:   { fx:['Shell','Fire Shell','Cluster Bomb'], name:'Cannon',    col:'#ffb070', cost:[90, 100, 150], range:[330, 360, 400], cd:[92, 80, 66], dmg:[26, 36, 50] },
+  frost:    { fx:['Slow','Ice Burst','Blizzard'], name:'Frost',     col:'#9ff4ff', cost:[70, 80, 120],  range:[300, 330, 360], cd:[70, 60, 50], dmg:[6, 9, 13] },
+  lightning:{ fx:['Chain','Shock Chain','Thunderstorm'], name:'Lightning', col:'#ffe27a', cost:[100, 110, 160],range:[300, 330, 360], cd:[84, 70, 58], dmg:[14, 20, 28] },
 };
 const TKEYS = ['archer','cannon','frost','lightning'];
 const GOLDV = { spear:8, archer:8, rider:14, zombie:7, grunt:8, trooper:9, runner:6, shieldy:14, bomber:12, imp:9, shaman:15, boss:0 };
@@ -2660,10 +2669,14 @@ const TOWER_HITTERS = { bomber:1, archer:1, trooper:1, hero:1, boss:1 };
 function holdMarch(u, out){
   out.faceTo = -1;
   const bar = !u.fly && G.units.find(b => b.kind === 'barricade' && b.alive() && u.x > b.x && u.x - b.x < 76);
-  const walk = () => { out.l = true; u.face = -1; const mid = ZMAX()*.5, lane = mid + Math.sin((u.seed||0)*1.7)*ZMAX()*.28; if (u.z < lane - 10) out.d = true; else if (u.z > lane + 10) out.u = true; return out; };
+  const walk = () => { if (u.holdBoss && u.x < G.fort.x + 106) return out; out.l = true; u.face = -1; const mid = ZMAX()*.5, lane = mid + Math.sin((u.seed||0)*1.7)*ZMAX()*.28; if (u.z < lane - 10) out.d = true; else if (u.z > lane + 10) out.u = true; return out; };
   if (u.state === 'atk') return out;
   if (bar){ u.face = -1; if (--u.cool <= 0){ if (u.kind === 'hero') out.ev.push('A'); else { out.ev.push('A'); } u.cool = u.kind === 'hero' ? rnd(14, 24) : rnd(36, 60); } return out; }
   if (u.kind === 'shaman'){ if (--u.cool <= 0 && G.units.some(a => a.team === 1 && a.alive() && a !== u && a.hp < a.maxhp*.85 && Math.abs(a.x - u.x) < 180)){ out.act = 'shoot'; u.cool = 150; return out; } return walk(); }
+  if (u.kind === 'hero' && u.hero && u.can()){
+    if (u.sg >= 100 && !u.form && Math.random() < .03){ out.ult = true; return out; }
+    if ((u.skCd = (u.skCd == null ? 90 : u.skCd) - 1) <= 0){ const ks = ['f','u','d'].filter(k => u.hero.sk[k] && u.hero.sk[k].cost < 900); const k = ks[Math.floor(Math.random()*ks.length)];
+      if (k){ u.mp = Math.max(u.mp, u.hero.sk[k].cost); const near = nearestFoe(u); u.face = near && Math.abs(near.x - u.x) < 400 ? (near.x > u.x ? 1 : -1) : -1; out.sp = k; u.skCd = rnd(150, 230); return out; } } }
   if (TOWER_HITTERS[u.kind] && G.towers && (u.tcool = (u.tcool || 40) - 1) <= 0){
     const ranged = u.kind === 'bomber' || u.kind === 'archer' || u.kind === 'trooper', R = u.kind === 'bomber' ? 330 : ranged ? 280 : 70;
     const t = G.towers.filter(t => t.hp > 0 && t.buildT <= 0 && Math.abs(t.x - u.x) < R).sort((a, b) => Math.abs(a.x - u.x) - Math.abs(b.x - u.x))[0];
@@ -2671,7 +2684,7 @@ function holdMarch(u, out){
       u.face = t.x > u.x ? 1 : -1;
       if (u.kind === 'bomber'){ u.btx = t.x + rnd(-10, 10); u.btz = t.z + 10; out.act = 'shoot'; u.tcool = rnd(110, 150); return out; }
       if (ranged){ u.shootTower = t; out.act = 'shoot'; u.tcool = rnd(90, 130); return out; }
-      const dmg = u.kind === 'boss' ? 26 : 14 * (u.pow || 1); out.ev.push('A'); u.tcool = u.kind === 'boss' ? 50 : 40;
+      const dmg = u.kind === 'boss' ? 50 : 30 * (u.pow || 1); out.ev.push('A'); u.tcool = u.kind === 'boss' ? 50 : 40;
       delayed.push({t:10, fn:() => { if (t.hp <= 0 || !u.alive()) return; t.hp -= dmg; t.flash = 8; sparks(t.x, G.st.FT + t.z - rnd(40, 110), '#ffd27a', 8); SFX.hit(); if (t.hp <= 0) towerDestroyed(t); }});
       return out; }
     u.tcool = 12;
@@ -2688,15 +2701,15 @@ function holdWaveList(n, st){
   return L;
 }
 function startHold(stageKey, opt){
-  opt = opt || {}; const st = STAGES[stageKey || 'village'], diff = SAVE.hdiff != null ? SAVE.hdiff : 1;
+  opt = opt || {}; const st = STAGES[stageKey || 'village'], diff = SAVE.hdiff != null ? SAVE.hdiff : 1; Z = HOLD_Z; viewW = W / Z;
   G = baseG('hold', st, opt.lv != null ? opt.lv : 1); setupCards(); G.holdArgs = [stageKey, opt]; G.hdiff = diff;
-  G.mapW = Math.max(1900, Math.ceil(viewW*2)); G.ZW = G.mapW; G.bounds = { l:0, r:G.mapW };
+  G.mapW = Math.max(2700, Math.ceil(viewW*2.1)); G.ZW = G.mapW; G.bounds = { l:0, r:G.mapW };
   fx.length = 0; particles.length = 0; delayed.length = 0;
   const fort = new Unit({ kind:'fort', team:-2, name:'Your fort', hp:100, spd:0, pow:0, h:240, x:120, z:2 }); fort.maxhp = 100;
   G.fort = fort; G.forts = [fort, {x:G.mapW}]; G.units.push(fort);
-  const pads = []; for (let x = 360; x < G.mapW - 260; x += 230) pads.push({x, z:6});
+  const pads = []; for (let x = 380; x < G.mapW - 300; x += 250) pads.push({x, z:6});
   Object.assign(G, { hwave:0, hq:[], hsp:0, hsince:0, hbuild:720, siren:0, hboss:opt.boss || 'boss', hfoes:opt.foes || HERO_IDS, hallies:opt.allies || HERO_IDS, bossOut:false,
-    gold:[[220, 160, 140][diff], 0], pads, towers:[], bslots:[{x:700}, {x:1180}].filter(s => s.x < G.mapW - 300), hmenu:null, hnext:holdWaveList(1, st) });
+    gold:[[220, 160, 140][diff], 0], pads, towers:[], bslots:[{x:760}, {x:1380}, {x:2000}].filter(s => s.x < G.mapW - 300), hmenu:null, hnext:holdWaveList(1, st) });
   const team = SAVE.team;
   const p = heroUnit(team[0], 0, 330, ZMAX()*.55); p.isPlayer = true; G.player = p; G.units.push(p); G.usedHeroes.add(p.id);
   if (team[1]){ G.units.push(heroUnit(team[1], 0, 280, ZMAX()*.3)); G.usedHeroes.add(team[1]); }
@@ -2709,12 +2722,12 @@ function holdSpawn(){
   G.hq = G.hq.concat(holdWaveList(n, st)); G.hsp = 0; G.hsince = 0; G.hbuild = 0;
   G.hnext = n < HOLD_WAVES ? holdWaveList(n + 1, st) : null;
   if (n % 3 === 0) G.hq.splice(Math.floor(G.hq.length/2), 0, 'HERO');
-  if (n % 4 === 0){ const pool = G.hallies.filter(id => !G.units.some(u => u.alive() && u.id === id) && !SAVE.team.slice(0,2).includes(id)); const id = pool[Math.floor(Math.random()*pool.length)];
+  if (false){ const pool = G.hallies.filter(id => !G.units.some(u => u.alive() && u.id === id) && !SAVE.team.slice(0,2).includes(id)); const id = pool[Math.floor(Math.random()*pool.length)];
     if (id){ const u = heroUnit(id, 0, Math.min(G.mapW - 300, G.player ? G.player.x + 220 : 600), ZMAX()*.5); u.team = -1; u.recruit = true; u.entered = true; u.face = -1; G.units.push(u); addMsg(`<a>${u.name}</a> wants to help! Walk up to recruit.`); } }
   addMsg(n === HOLD_WAVES ? 'The <e>final wave</e> is coming!' : `Wave <e>${n}</e> of ${HOLD_WAVES}!`); SFX.go();
 }
 function holdSpawnOne(){
-  const k = G.hq.shift(), n = G.hwave, hpm = (1 + .22*(n - 1)) * [.7, 1, 1.25][G.hdiff], z = rnd(16, ZMAX()-16);
+  const k = G.hq.shift(), n = G.hwave, hpm = (1 + .26*(n - 1)) * [.75, 1.2, 1.5][G.hdiff], z = rnd(16, ZMAX()-16);
   let u;
   if (k === 'HERO'){ const pool = G.hfoes.filter(id => !G.units.some(v => v.alive() && v.id === id)); const id = pool[Math.floor(Math.random()*pool.length)] || 'kai'; u = heroUnit(id, 1, G.mapW - 50, z, Math.min(2, G.lv)); addMsg(`<e>${HEROES[id].name}</e> joins the attack!`); }
   else u = soldierUnit(k, 1, G.mapW - 40, z);
@@ -2731,7 +2744,7 @@ function holdBuy(opt){
       G.gold[0] -= c; G.towers.push({kind:'tower', team:0, pow:1, name:TOWERS[k].name + ' tower', alive(){ return this.hp > 0; }, pad:m.i, type:k, lv:1, x:pad.x, z:pad.z, cd:30, hp:120, maxhp:120, buildT:40, spent:c, kick:0, flash:0}); dust(pad.x, pad.z, 14); SFX.coin(); G.hmenu = null; return; }
     if (opt === 0 && t.lv < 3){ const c = TOWERS[t.type].cost[t.lv]; if (G.gold[0] < c){ SFX.block(); addMsg('Not enough <e>gold</e>.'); return; }
       G.gold[0] -= c; t.spent += c; t.lv++; t.maxhp += 60; t.hp = t.maxhp; t.buildT = 26; ring(t.x, G.st.FT + t.z - 90, TOWERS[t.type].col); for (let i=0;i<24;i++) particles.push({x:t.x + rnd(-40,40), y:G.st.FT + t.z - rnd(0,170), vx:rnd(-1,1), vy:-rnd(1,3), life:30, max:30, col:'#ffe27a', kind:'spark'}); SFX.ult(); G.hmenu = null; return; }
-    if (opt === 2){ if (t.hp >= t.maxhp) return; const c = 25; if (G.gold[0] < c){ SFX.block(); addMsg('Not enough <e>gold</e>.'); return; } G.gold[0] -= c; t.hp = t.maxhp; for (let i=0;i<12;i++) particles.push({x:t.x + rnd(-30,30), y:G.st.FT + t.z - rnd(0,140), vx:0, vy:-rnd(.6,1.6), life:26, max:26, col:'#7dff9a', kind:'plus'}); SFX.heal(); G.hmenu = null; return; }
+    if (opt === 2){ if (t.hp >= t.maxhp) return; const c = 25; if (G.gold[0] < c){ SFX.block(); addMsg('Not enough <e>gold</e>.'); return; } G.gold[0] -= c; t.hp = Math.min(t.maxhp, t.hp + Math.round(t.maxhp*.25)); for (let i=0;i<12;i++) particles.push({x:t.x + rnd(-30,30), y:G.st.FT + t.z - rnd(0,140), vx:0, vy:-rnd(.6,1.6), life:26, max:26, col:'#7dff9a', kind:'plus'}); SFX.heal(); G.hmenu = null; return; }
     if (opt === 1 || (opt === 0 && t.lv >= 3)){ if (opt !== 1) return; G.gold[0] += Math.round(t.spent*.6); smoke(t.x, t.z, 12); G.towers = G.towers.filter(v => v !== t); SFX.coin(); G.hmenu = null; return; }
   } else {
     const s = G.bslots[m.i], b = s.u && s.u.alive() ? s.u : null, c = b ? 40 : 50;
@@ -2754,13 +2767,20 @@ function towerFire(t){
   if (!foesIn.length) return false;
   const tg = foesIn.sort((a, b) => a.x - b.x)[0], top = {x:t.x, y:-(118 + t.lv*14)};
   t.kick = 8;
-  if (t.type === 'archer'){ const n = t.lv === 3 ? 2 : 1; for (let i=0;i<n;i++){ const tt = foesIn[i] || tg; proj({kind:'tarrow', owner:t, x:t.x, z:t.z, y:top.y, tgt:tt, dmg:T.dmg[L], lv:t.lv, life:120}); } SFX.arrow(); }
-  else if (t.type === 'cannon'){ lob(t, 'vfx_shell', tg.x + tg.vx*20, 34, {y:top.y, x0:t.x, z0:t.z, tz:tg.z, aoe:70 + t.lv*12, hits:1, every:8, dmg:T.dmg[L], col:'#ffb070', h:24, spin:true, heavy:true, kb:5, launch:-6, kd:true}); for (let i=0;i<10;i++) particles.push({x:t.x + rnd(-10,10), y:G.st.FT + t.z + top.y + rnd(-6,6), vx:rnd(-1,1), vy:-rnd(.5,2), life:26, max:26, col:'rgba(120,110,100,.7)', kind:'smoke', s:rnd(8,16)}); SFX.heavy(); }
-  else if (t.type === 'frost'){ proj({kind:'tfrost', owner:t, x:t.x, z:t.z, y:top.y, tgt:tg, dmg:T.dmg[L], lv:t.lv, life:120}); SFX.block(); }
-  else { const pts = [[t.x, G.st.FT + t.z + top.y]], hitSet = new Set(); let cur = tg; const nmax = 2 + t.lv;
-    for (let i=0;i<nmax && cur;i++){ hitSet.add(cur); pts.push([cur.x, sy(cur) - cur.h*.55]); applyHit(cur, cur.x >= t.x ? 1 : -1, {dmg:T.dmg[L], kb:.5, stun:24, shock:40}, t, cur.x, sy(cur) - cur.h*.55);
-      cur = G.units.filter(u => u.team === 1 && u.alive() && u.hittable() && !hitSet.has(u) && Math.abs(u.x - cur.x) < 140 && Math.abs(u.z - cur.z) < 80).sort((a, b) => Math.abs(a.x - cur.x) - Math.abs(b.x - cur.x))[0]; }
-    fx.push({kind:'zap', owner:t, pts, t:0, life:14, x:t.x, z:200, y:0, vx:0, hit:new Set(), dead:false, r:0}); SFX.skill(); }
+  if (t.type === 'archer'){
+    const n = t.lv >= 2 ? 2 : 1; for (let i=0;i<n;i++){ const tt = foesIn[i] || tg; proj({kind:'tarrow', owner:t, x:t.x, z:t.z, y:top.y, tgt:tt, dmg:T.dmg[L], lv:t.lv, life:120}); }
+    if (t.lv === 3 && (t.bolt = (t.bolt || 0) + 1) % 3 === 0){ const dir = tg.x >= t.x ? 1 : -1; proj({kind:'pbolt', owner:t, x:t.x + dir*20, z:tg.z, y:-55, vx:dir*17, life:46, dmg:30, kb:3, stun:20, r:22, pierce:true}); shake = Math.max(shake, 3); SFX.heavy(); }
+    SFX.arrow(); }
+  else if (t.type === 'cannon'){ lob(t, 'vfx_shell', tg.x + tg.vx*20, 34, {y:top.y, x0:t.x, z0:t.z, tz:tg.z, aoe:70 + t.lv*10, hits:1, every:8, dmg:T.dmg[L], col:'#ffb070', h:24, spin:true, heavy:true, kb:5, launch:-6, kd:true, fire:t.lv >= 2, cluster:t.lv === 3});
+    for (let i=0;i<10;i++) particles.push({x:t.x + rnd(-10,10), y:G.st.FT + t.z + top.y + rnd(-6,6), vx:rnd(-1,1), vy:-rnd(.5,2), life:26, max:26, col:'rgba(120,110,100,.7)', kind:'smoke', s:rnd(8,16)}); SFX.heavy(); }
+  else if (t.type === 'frost'){ proj({kind:'tfrost', owner:t, x:t.x, z:t.z, y:top.y, tgt:tg, dmg:T.dmg[L], lv:t.lv, life:120}); SFX.block();
+    if (t.lv === 3 && (t.bliz = (t.bliz || 0) + 1) % 4 === 0){ for (const u of foesIn) if (Math.abs(u.x - t.x) < R*.75){ u.slowT = Math.max(u.slowT||0, 200); applyHit(u, u.x >= t.x ? 1 : -1, {dmg:6, kb:0, stun:6, freeze:24}, t, u.x, sy(u) - u.h*.55); }
+      fx.push({kind:'blizz', owner:t, x:t.x, z:ZMAX()*.5, y:0, vx:0, t:0, life:34, R:R*.75, hit:new Set(), dead:false, r:0}); SFX.skill(); } }
+  else { const pts = [[t.x, G.st.FT + t.z + top.y]], hitSet = new Set(); let cur = tg; const nmax = [2, 4, 5][L];
+    for (let i=0;i<nmax && cur;i++){ hitSet.add(cur); pts.push([cur.x, sy(cur) - cur.h*.55]); applyHit(cur, cur.x >= t.x ? 1 : -1, {dmg:T.dmg[L], kb:.5, stun: t.lv >= 2 ? 34 : 20, shock: t.lv >= 2 ? 70 : 30}, t, cur.x, sy(cur) - cur.h*.55);
+      cur = G.units.filter(u => u.team === 1 && u.alive() && u.hittable() && !hitSet.has(u) && Math.abs(u.x - cur.x) < 150 && Math.abs(u.z - cur.z) < 90).sort((a, b) => Math.abs(a.x - cur.x) - Math.abs(b.x - cur.x))[0]; }
+    fx.push({kind:'zap', owner:t, pts, t:0, life:14, x:t.x, z:200, y:0, vx:0, hit:new Set(), dead:false, r:0}); SFX.skill();
+    if (t.lv === 3 && (t.storm = (t.storm || 0) + 1) % 2 === 0){ const big = foesIn.slice().sort((a, b) => b.hp - a.hp)[0]; proj({kind:'bolt', owner:t, x:big.x, z:big.z, delay:14, life:26, dmg:45, kb:2, launch:-8, kd:true, r:36, shock:40}); } }
   return true;
 }
 function holdTick(){
@@ -2783,10 +2803,12 @@ function holdTick(){
     for (const t of G.towers){ if (t.buildT > 0){ t.buildT--; continue; } if (t.kick > 0) t.kick--; if (t.flash > 0) t.flash--; if (--t.cd <= 0) t.cd = towerFire(t) ? TOWERS[t.type].cd[t.lv - 1] : 10; }
     // enemies that reach the fort
     for (const u of G.units){ if (u.team !== 1 || !u.alive() || u.kind === 'fort') continue;
+      if (u.holdBoss){ if (u.x < G.fort.x + 100){ u.x = G.fort.x + 100; if ((u.fortCd = (u.fortCd || 0) - 1) <= 0 && u.can()){ u.fortCd = 70; u.face = -1; if (u.kind === 'boss') u.startAtk('chop'); else { u.comboStep = 0; u.startAtk('p1'); }
+          delayed.push({t:14, fn:() => { if (!u.alive()) return; const d = Math.round(7*[.6, 1, 1.2][G.hdiff]); G.fort.hp = Math.max(0, G.fort.hp - d); G.fort.flash = 8; shake = 6; SFX.heavy(); sparks(G.fort.x + 60, G.st.FT + 20 - rnd(40, 160), '#ffd27a', 10); }}); } } continue; }
       if (u.x < G.fort.x + 60){ const d = Math.round((u.holdBoss ? 30 : u.kind === 'hero' ? 15 : u.kind === 'runner' ? 5 : 7) * [.6, 1, 1.2][G.hdiff]); G.fort.hp = Math.max(0, G.fort.hp - d); G.fort.flash = 8; u.dead = true; u.hp = 0; shake = 6; SFX.heavy(); smoke(u.x, u.z, 10); addMsg(`<e>${u.name}</e> broke into the fort! −${d}`); } }
     G.units = G.units.filter(u => !u.dead || u.kind === 'fort');
     if (G.fort.hp <= 0){ G.phase = 'lose'; G.pt = 0; SFX.lose(); }
-    else if (G.hwave >= HOLD_WAVES && G.bossOut && !G.hq.length && !left){ G.phase = 'win'; G.pt = 0; SFX.win(); for (const u of G.units) if (u.alive() && u.kind === 'hero' && u.team === 0) u.set('win'); }
+    else if (G.hwave >= HOLD_WAVES && G.bossOut && !G.hq.length && !left && !G.units.some(u => u.holdBoss && !u.dead && u.hp > 0)){ G.phase = 'win'; G.pt = 0; SFX.win(); for (const u of G.units) if (u.alive() && u.kind === 'hero' && u.team === 0) u.set('win'); }
   } else if ((G.phase === 'win' || G.phase === 'lose') && G.pt > 150) finishGame(G.phase === 'win');
 }
 const W2S = (x, y) => [(x - G.cam)*Z, (y - (H - H/Z))*Z];
@@ -2849,7 +2871,7 @@ function drawHoldHUD0(){
     hot.push({x:bx, y:by, w:bw, h:96, act:() => {}});
     const opts = [];
     if (isPad && !t) TKEYS.forEach(k => opts.push({label:`${TOWERS[k].name} ${TOWERS[k].cost[0]}`, img:'tw_' + k + '1', cost:TOWERS[k].cost[0]}));
-    else if (isPad){ if (t.lv < 3) opts.push({label:`Upgrade ${TOWERS[t.type].cost[t.lv]}`, img:'tw_' + t.type + (t.lv + 1), cost:TOWERS[t.type].cost[t.lv]}); else opts.push({label:'Max level', img:'tw_' + t.type + '3', cost:1e9}); opts.push({label:`Sell +${Math.round(t.spent*.6)}`, img:'td_coin', cost:0}); if (t.hp < t.maxhp) opts.push({label:'Repair 25', img:'tw_' + t.type + t.lv, cost:25}); }
+    else if (isPad){ if (t.lv < 3) opts.push({label:`${TOWERS[t.type].fx[t.lv]} ${TOWERS[t.type].cost[t.lv]}`, img:'tw_' + t.type + (t.lv + 1), cost:TOWERS[t.type].cost[t.lv]}); else opts.push({label:'Max level', img:'tw_' + t.type + '3', cost:1e9}); opts.push({label:`Sell +${Math.round(t.spent*.6)}`, img:'td_coin', cost:0}); if (t.hp < t.maxhp) opts.push({label:'Repair 25% · 25', img:'tw_' + t.type + t.lv, cost:25}); }
     else { const b = s.u && s.u.alive() ? s.u : null; opts.push({label: b ? (b.lv >= 3 ? 'Repair 40' : 'Reinforce 40') : 'Barricade 50', img:'td_bar1', cost: b ? 40 : 50}); }
     const ow = (bw - 20)/Math.max(opts.length, 2);
     opts.forEach((o, i) => { const ox = bx + 10 + i*ow, can = G.gold[0] >= o.cost; const mk = META[o.img], im = IMG[o.img];
@@ -3085,8 +3107,9 @@ function drawFight(){
   ctx.save();
   if (shake) ctx.translate(rnd(-shake,shake), rnd(-shake,shake));
   ctx.save();
+  if (Z < 1) drawStage(true);
   ctx.scale(Z, Z); ctx.translate(0, -(H - H/Z));
-  drawStage();
+  if (Z >= 1) drawStage();
   if (G.mode === 'battle') drawMines();
   if (G.mode === 'hold') drawHoldWorld();
   drawItems();
@@ -4035,8 +4058,10 @@ function frame(now){
   try { frameInner(now); } catch(e){ errCount = (errCount||0) + 1; if (errCount < 5) console.error(e); }
 }
 let errCount = 0;
+const HOLD_Z = .7;
 function frameInner(now){
   atlasTick();
+  { const wz = (S.screen === 'fight' && G && G.mode === 'hold') ? HOLD_Z : (SAVE.ui.zoom || 1); if (Z !== wz){ Z = wz; viewW = W / Z; } }
   ctx.setTransform(cv.width/W, 0, 0, cv.height/H, 0, 0); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
   acc += Math.min(100, now - last); last = now;
   while (acc >= 1000/60){
