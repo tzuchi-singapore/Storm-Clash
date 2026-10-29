@@ -159,6 +159,7 @@ function tint(key, im){
 }
 for (const k in ASSETS){ const im = new Image(); im.onload = () => { if (/^(spear|archer|rider)_/.test(k)) tint(k, im); }; im.src = ASSETS[k]; IMG[k] = im; }
 
+const BDR = { fx_bdr1:{w:421, h:240, n:20, cols:5, shoot:10}, fx_bdr3:{w:538, h:300, n:22, cols:5, shoot:13} }; for (const k in BDR){ const im = new Image(); im.src = k + '.webp'; IMG[k] = im; }
 const TEARM = {"w": 395, "h": 360, "n": 24, "cols": 6}; { const im = new Image(); im.src = 'fx_tear.webp'; IMG.fx_tear = im; }
 // Atlases are big (~30 MB each once decoded), so only the fighters on screen are kept in memory.
 const ATL = {}, ADEP = { knight:['dknight'], monk:['buddha'], sci:['mecha','dog'], lord:['lordx','golem','iceking'], ninja:['shade'], madsci:['biomech'], taoist:['jiangshi'], xian:['xgood','xevil'], yao:['yaod'], vraxx:['vraxxf'], rio:['riox'], bone:['bonex'], kael:['kaelx'] };
@@ -306,7 +307,7 @@ const HEROES = {
           sk:{ f:{name:'Ice Wave',cost:60,icon:'snow'}, u:{name:'',cost:9999,icon:'snow'}, d:{name:'',cost:9999,icon:'snow'} } },
 };
 for (const k in HEROES) HEROES[k].hp = Math.round(HEROES[k].hp * 1.5);
-const MUL = {"rajan.n": 0.85, "knight.n": 0.8, "samurai.n": 0.8, "lord.n": 0.8, "dknight.n": 0.85, "mecha.n": 0.9, "lordx.n": 0.62, "buddha.n": 0.9, "kai.f": 1.2, "kai.u": 1.3, "kai.d": 1.3, "mei.f": 1.8, "mei.u": 1.5, "mei.d": 2.0, "rajan.f": 0.85, "rajan.u": 1.2, "zara.f": 1.5, "zara.u": 1.3, "zara.d": 1.9, "hong.f": 1.6, "hong.u": 1.25, "hong.d": 1.55, "ayu.f": 1.4, "ayu.u": 2.0, "knight.f": 1.2, "knight.u": 1.3, "knight.d": 0.9, "monk.f": 1.3, "monk.u": 1.2, "monk.d": 1.1, "ninja.f": 2.4, "samurai.f": 1.1, "samurai.u": 0.9, "samurai.d": 1.5, "sci.f": 1.0, "sci.u": 1.3, "sci.d": 1.9, "lord.u": 0.5, "lord.d": 0.85, "dknight.f": 0.3, "dknight.u": 0.3, "dknight.d": 0.67, "buddha.f": 0.85, "buddha.u": 1.3, "buddha.d": 0.55, "mecha.f": 0.4, "mecha.u": 0.72, "mecha.d": 0.5, "lordx.u": 0.31, "lordx.d": 0.6, "nclone.n": 0.45, "nclone.f": 1.0, "golem.n": 0.45, "shade.n": 0.8, "shade.f": 0.8, "iceking.n": 0.55, "iceking.f": 0.9, "kai.ult": 1.05, "mei.ult": 0.48, "zara.ult": 0.6, "samurai.ult": 1.05, "rajan.ult": 0.4, "taoist.d": 1.35, "taoist.ult": 0.6, "madsci.n": 0.8, "madsci.f": 1.5, "madsci.u": 0.95, "madsci.d": 1.05, "biomech.n": 0.6, "biomech.u": 0.8, "biomech.d": 0.7, "taoist.n": 1.2, "xian.n": 0.88, "xian.u": 1.25, "yao.n": 1.25, "yao.u": 1.4, "xgood.n": 1.1, "xgood.f": 0.75, "xgood.d": 0.8, "xevil.n": 1.05, "xevil.d": 0.7, "yaod.n": 0.85, "yaod.f": 0.85, "yaod.d": 0.85, "brute.n": 0.85, "brute.u": 1.5, "vraxx.n": 0.85, "vraxx.f": 1.6, "mira.n": 1.25, "mira.f": 1.4, "mira.u": 1.4, "mira.d": 1.1, "bella.n": 1.2, "bella.u": 1.25, "bella.d": 1.1, "vraxxf.n": 0.6, "vraxxf.f": 1.2, "vraxxf.u": 1.8, "vraxxf.d": 0.8, "riox.n": 0.72, "riox.f": 1.4, "riox.d": 0.7, "pa.n": 0.6, "nurse.n": 0.6, "recep.n": 0.6, "doc.n": 0.6, "surgeon.n": 0.6, "guard1.n": 0.75, "guard2.n": 0.75, "bone.f": 1.35, "curse.u": 1.3, "curse.d": 1.6, "kael.f": 1.8, "kael.u": 1.4, "lux.f": 1.5, "lux.d": 1.8, "bonex.n": 0.65, "bonex.f": 0.95, "bonex.d": 0.75, "kaelx.n": 1.15, "kaelx.f": 1.4, "kaelx.u": 0.7, "kclone.n": 0.7, "kaelx.d": 0.7, "angelk.n": 0.6};
+const MUL = {"rajan.n": 0.85, "knight.n": 0.8, "samurai.n": 0.8, "lord.n": 0.8, "dknight.n": 0.85, "mecha.n": 0.9, "lordx.n": 0.62, "buddha.n": 0.9, "kai.f": 1.2, "kai.u": 1.3, "kai.d": 1.3, "mei.f": 1.8, "mei.u": 1.5, "mei.d": 2.0, "rajan.f": 0.85, "rajan.u": 1.2, "zara.f": 1.5, "zara.u": 1.3, "zara.d": 1.9, "hong.f": 1.6, "hong.u": 1.25, "hong.d": 1.55, "ayu.f": 1.4, "ayu.u": 2.0, "knight.f": 1.2, "knight.u": 1.3, "knight.d": 0.9, "monk.f": 1.3, "monk.u": 1.2, "monk.d": 1.1, "ninja.f": 2.4, "samurai.f": 1.1, "samurai.u": 0.9, "samurai.d": 1.5, "sci.f": 1.0, "sci.u": 1.3, "sci.d": 1.9, "lord.u": 0.5, "lord.d": 0.85, "dknight.f": 0.3, "dknight.u": 0.3, "dknight.d": 0.67, "buddha.f": 0.85, "buddha.u": 1.3, "buddha.d": 0.55, "mecha.f": 0.4, "mecha.u": 0.72, "mecha.d": 0.5, "lordx.u": 0.31, "lordx.d": 0.6, "nclone.n": 0.45, "nclone.f": 1.0, "golem.n": 0.45, "shade.n": 0.8, "shade.f": 0.8, "iceking.n": 0.55, "iceking.f": 0.9, "kai.ult": 1.05, "mei.ult": 0.48, "zara.ult": 0.6, "samurai.ult": 1.05, "rajan.ult": 0.4, "taoist.d": 1.35, "taoist.ult": 0.6, "madsci.n": 0.8, "madsci.f": 1.5, "madsci.u": 0.95, "madsci.d": 1.05, "biomech.n": 0.6, "biomech.u": 0.8, "biomech.d": 0.7, "taoist.n": 1.2, "xian.n": 0.88, "xian.u": 1.25, "yao.n": 1.25, "yao.u": 1.4, "xgood.n": 1.1, "xgood.f": 0.75, "xgood.d": 0.8, "xevil.n": 1.05, "xevil.d": 0.7, "yaod.n": 0.85, "yaod.f": 0.85, "yaod.d": 0.85, "brute.n": 0.85, "brute.u": 1.5, "vraxx.n": 0.85, "vraxx.f": 1.6, "mira.n": 1.25, "mira.f": 1.4, "mira.u": 1.4, "mira.d": 1.1, "bella.n": 1.2, "bella.u": 1.25, "bella.d": 1.1, "vraxxf.n": 0.6, "vraxxf.f": 1.2, "vraxxf.u": 1.8, "vraxxf.d": 0.8, "riox.n": 0.72, "riox.f": 1.4, "riox.d": 0.7, "pa.n": 0.6, "nurse.n": 0.6, "recep.n": 0.6, "doc.n": 0.6, "surgeon.n": 0.6, "guard1.n": 0.75, "guard2.n": 0.75, "bone.f": 1.35, "curse.u": 1.3, "curse.d": 1.6, "kael.f": 1.8, "kael.u": 1.4, "lux.f": 1.5, "lux.d": 1.8, "bonex.n": 0.65, "bonex.f": 0.95, "bonex.d": 1.05, "kaelx.n": 1.15, "kaelx.f": 1.4, "kaelx.u": 0.7, "kclone.n": 0.7, "kaelx.d": 0.7, "angelk.n": 0.6};
 let NOPRO = false, PTAG = null, INFX = false;
 const tagOf = u => !u || u.kind !== 'hero' ? null : u.state === 'sp' ? u.sid + '.' + (u.spKey === 'thr' ? 'd' : u.spKey) : u.state === 'ult' ? u.id + '.ult' : u.state === 'grab' ? u.sid + '.d' : null;
 const AID = id => (HEROES[id] && HEROES[id].atlas && !ANIM[id]) ? HEROES[id].atlas : id;
@@ -604,6 +605,7 @@ class Unit {
     if ((inp.ult || inp.ev.includes('S')) && this.kind === 'hero' && !this.summon && !this.riding && !this.form && this.sg >= 100 && (this.can() || st === 'defend' || st === 'atk' || st === 'jump')){ startUlt(this); this.physics(); return; }
     if (sp && st === 'grab' && this.kind === 'hero'){ if (sp === 'd'){ throwHeld(this); this.physics(); return; } releaseHeld(this); }
     if (sp && this.riding){ if (this.isPlayer){ this.flash = 40; this.flashMsg = 'Get off the raptor to use skills'; } sp = null; }
+    if (sp === 'u' && boneLocked(this)){ if (this.isPlayer && inp.sp){ this.flash = 30; floatText(this, 'Bone Armour recharging', '#efe6cc'); } sp = null; }
     if (sp && this.kind === 'hero' && (this.can() || st==='defend' || (st==='atk' && this.t >= this.atk.a[0]) || (st==='sp' && this.sp.cancelAt && this.t >= this.sp.cancelAt) || (st==='jump' && this.t > 4))){
       const cost = Math.round(this.hero.sk[sp].cost * (this.costMul||1));
       if (this.mp >= cost){ this.mp -= cost; this.sp = SPEC[this.sid][sp]; this.spKey = sp; this.set('sp'); if (this.sp.air === false || this.y >= -2) {} SFX.skill(); this.physics(); return; }
@@ -1009,8 +1011,8 @@ function bioCombo(m, t, big){
 }
 function heroShot(u, n){
   const f = u.face, id = u.sid, z0 = u.z;
-  if (id === 'curse'){ for (let i=0;i<3;i++) setTimeout0(() => { if (!u.alive()) return; const last = n === 3 && i === 2; proj({kind:'csoul', owner:u, x:u.x + f*42, z:Math.max(4, Math.min(ZMAX()-4, z0 + (i-1)*8)), y:u.y - 74 + (i-1)*10, vx:f*9.5, ph:i*2, life:30, dmg:7, kb: last ? 4 : 1, stun:16, r:16, launch: last ? -6 : 0, kd:last, sk:'curse.n'}); if (i === 0) SFX.arrow(); }, i*4); }
-  else if (id === 'lux'){ for (let i=0;i<3;i++) setTimeout0(() => { if (!u.alive()) return; const last = n === 3 && i === 2; proj({kind:'arrow', gold:true, owner:u, x:u.x + f*36, z:z0, y:u.y - 66 + (i-1)*7, vx:f*15, life:20, dmg:7, kb: last ? 4 : 1.2, stun:14, r:12, launch: last ? -6 : 0, kd:last, sk:'lux.n'}); SFX.arrow(); }, i*3); }
+  if (id === 'curse'){ const last = n === 3; proj({kind:'csoul', owner:u, x:u.x + f*42, z:z0, y:u.y - 74, vx:f*9.5, ph:0, life:30, dmg:20, kb: last ? 4 : 1.4, stun:18, r:18, launch: last ? -6 : 0, kd:last, big:true, sk:'curse.n'}); SFX.arrow(); }
+  else if (id === 'lux'){ const last = n === 3; proj({kind:'arrow', gold:true, owner:u, x:u.x + f*36, z:z0, y:u.y - 66, vx:f*15, life:20, dmg:20, kb: last ? 4 : 1.4, stun:16, r:14, launch: last ? -6 : 0, kd:last, sk:'lux.n'}); SFX.arrow(); }
   else if (id === 'cbotf' || id === 'cboti'){ const fire = id === 'cbotf'; beast(u, fire ? 'vfx_fireball' : 'vfx_icerocket', {vx:9, y:-46, life:40, maxHits:1, every:99, dmg:10, kb:1.5, stun:16, burn: fire ? 90 : 0, freeze: fire ? 0 : 26, h:30, hitR:30, stall:false, lastLaunch:0, col: fire ? '#ff7a3a' : '#bff4ff', sk:id + '.n'}); SFX.arrow(); }
 }
 function chargeKey(m, t, inp, key, need, col){
@@ -1026,7 +1028,7 @@ function chargeKey(m, t, inp, key, need, col){
   m.chgOn = false; return false;
 }
 const PORTAL_OPTS = ['lord','madsci','brute','vraxx','queen','bone'];
-const NO_NEGATE = ['barmor','portal','hportal','prop','bdrag','erupt','mcircle','emitter','bagua','blizz','ablade','mblade','skybeam','shadowh'];
+const NO_NEGATE = ['bdrag2','barmor','portal','hportal','prop','bdrag','erupt','mcircle','emitter','bagua','blizz','ablade','mblade','skybeam','shadowh'];
 function cutSpells(m, R, reflect){
   for (const p of fx){ if (p.dead || !p.owner || p.owner.team === m.team || NO_NEGATE.includes(p.kind)) continue; const dx = (p.x - m.x)*m.face; if (dx < -30 || dx > R || Math.abs(p.z - m.z) > 60) continue;
     if (reflect && p.vx){ p.owner = m; p.vx = -p.vx; if (p.vx0) p.vx0 = -p.vx0; p.hit.clear(); if (p.hc) p.hc.clear(); p.sk = 'kaelx.f'; p.t = Math.min(p.t, 6); sparks(p.x, G.st.FT + p.z + p.y, '#ff3a5a', 8); }
@@ -1034,6 +1036,7 @@ function cutSpells(m, R, reflect){
     SFX.block(); }
 }
 function boneFan(m, big){ proj({kind:'bspikes', owner:m, dir:m.face, n: big ? 10 : 5, max: big ? 330 : 210, len:0, life: big ? 54 : 36, every: big ? 5 : 7, maxHits: big ? 10 : 5, pierce:true, dmg: big ? 7 : 9, kb:.4, stun:26, lastLaunch: big ? -10 : -8}); shake = Math.max(shake, big ? 8 : 5); SFX.heavy(); }
+function boneLocked(u){ return (u.sid === 'bone' || u.sid === 'bonex') && (u.boneArm > 0 || G.frame < (u.boneCdF || 0)); }
 function boneArmor(m, n){ m.boneArm = n; m.boneArmT = 600; if (!fx.some(p => p.kind === 'barmor' && p.owner === m && !p.dead)) proj({kind:'barmor', owner:m, x:m.x, z:m.z, life:99999, nohit:true}); ring(m.x, sy(m) - m.h*.5, '#efe6cc'); for (let i=0;i<16;i++) particles.push({x:m.x + rnd(-40,40), y:sy(m) - rnd(0, m.h), vx:0, vy:-rnd(.5,2), life:26, max:26, col: i%2 ? '#efe6cc' : '#a8ff9a', kind:'spark'}); SFX.block(); }
 function shadowHand(m, x, clone){ proj({kind:'shadowh', owner:m, x, z:m.z, delay:6, life:40, every:7, maxHits:5, pierce:true, hitR:62, hitZ:36, dmg:9, kb:.3, stun:28, lastLaunch:-8, clone}); for (let i=0;i<10;i++) particles.push({x:x + rnd(-30,30), y:G.st.FT + m.z - rnd(0,10), vx:rnd(-1,1), vy:-rnd(.5,2), life:20, max:20, col:'#1a0828', kind:'smoke', s:rnd(10,18)}); SFX.skill(); }
 function vexArm(m, i, big){ const mech = i % 2 === 0; proj({kind:'bioarm', mech, owner:m, dir:m.face, oy: mech ? -58 : -64, len:0, max: big ? 165 : 135, w: big ? 34 : 28, life:7, every:99, dmg: big ? 9 : 11, kb:.4, stun:28, r:20, pierce:true}); SFX.whoosh(); }
@@ -1109,18 +1112,18 @@ Object.assign(SPEC, {
   bone: {
     f:{dur:40, pose:'sk_f', tick(m,t){ m.vx = 0; if (t===10) boneFan(m, false); }},
     u:{dur:34, pose:'sk_u', tick(m,t){ m.vx = 0; if (t===12) boneArmor(m, 4); }},
-    d:{dur:66, pose:(m)=> m.t < 28 ? ['atk1','atk2','atk3'][Math.floor(m.t/8) % 3] : 'sk_d', tick(m,t){ m.vx *= .7;
+    d:{dur:70, pose:(m)=> m.t < 24 ? ['atk1','atk2','atk3'][Math.floor(m.t/8) % 3] : 'cast', tick(m,t){ m.vx *= .7;
         if (t===6 || t===14 || t===22) swing(m, 118, {dmg:11, kb:.4, stun:30, sk:'bone.d'}, '#efe6cc');
-        if (t===28){ proj({kind:'bdrag', owner:m, img:'vfx_bdragon', x:m.x - m.face*50, z:Math.max(2, m.z - 6), y:-215, face:m.face, life:46, h:120}); SFX.roar(); }
-        if (t===40){ beast(m, 'vfx_bspike', {x:m.x + m.face*10, y:-90, vx:10, life:46, maxHits:3, every:7, dmg:10, h:44, hitR:52, kb:1.5, stun:28, lastLaunch:-8, col:'#efe6cc', sk:'bone.d'}); SFX.arrow(); } }},
+        if (t===24){ m.drag = proj({kind:'bdrag2', owner:m, img:'fx_bdr1', x:m.x + m.face*135, z:Math.max(2, m.z - 4), face:m.face, life:50, h:175}); dust(m.x + m.face*125, m.z, 14); SFX.roar(); shake = 5; }
+        if (t===49 && m.drag){ const d = m.drag; beast(m, 'vfx_bspike', {x:m.x + m.face*70, z:0, y:-84, vx:10, life:46, maxHits:3, every:7, dmg:10, h:46, hitR:56, kb:1.5, stun:28, lastLaunch:-8, col:'#b8ff9a', sk:'bone.d'}); SFX.heavy(); shake = 6; } }},
   },
   bonex: {
     f:{dur:58, pose:'sk_f', tick(m,t){ m.vx = 0; if (t===10) boneFan(m, true); }},
     u:{dur:34, pose:'sk_u', tick(m,t){ m.vx = 0; if (t===12) boneArmor(m, 8); }},
-    d:{dur:96, pose:(m)=> m.t < 40 ? ['atk1','atk2','atk3'][Math.floor(m.t/7) % 3] : 'sk_d', tick(m,t){ m.vx *= .7;
+    d:{dur:100, pose:(m)=> m.t < 36 ? ['atk1','atk2','atk3'][Math.floor(m.t/7) % 3] : 'sk_d', tick(m,t){ m.vx *= .7;
         if (t >= 6 && t <= 34 && (t - 6) % 7 === 0) swing(m, 130, {dmg:10, kb:.4, stun:30, sk:'bonex.d'}, '#c8ffb8');
-        if (t===38){ proj({kind:'bdrag', owner:m, img:'vfx_kdragon', x:m.x - m.face*70, z:Math.max(2, m.z - 6), y:-250, face:m.face, life:60, h:180, king:true}); SFX.roar(); shake = 8; }
-        if (t===52){ beast(m, 'vfx_bspear', {x:m.x + m.face*50, y:-82, vx:11, life:56, maxHits:5, every:6, dmg:10, h:44, hitR:74, hitZ:40, kb:1.5, stun:28, lastLaunch:-11, col:'#c8ffb8', sk:'bonex.d'}); SFX.heavy(); shake = 6; } }},
+        if (t===36){ m.drag = proj({kind:'bdrag2', owner:m, img:'fx_bdr3', x:m.x + m.face*185, z:Math.max(2, m.z - 4), face:m.face, life:66, h:235, king:true}); dust(m.x + m.face*160, m.z, 20); SFX.roar(); shake = 9; }
+        if (t===75 && m.drag){ const d = m.drag; beast(m, 'vfx_bspear', {x:m.x + m.face*80, z:0, y:-96, vx:11, life:56, maxHits:5, every:6, dmg:10, h:40, hitR:76, hitZ:42, kb:1.5, stun:28, lastLaunch:-11, col:'#c8ffb8', tri:true, sk:'bonex.d'}); SFX.heavy(); shake = 10; } }},
   },
   curse: {
     f:{dur:36, pose:'cast', tick(m,t){ m.vx = 0; if (t===14){ keepSummons(m, 'cbotf', 1, {hitsLeft:3, lifeT:900}, () => [m.x + m.face*60, m.z - 30]); keepSummons(m, 'cboti', 1, {hitsLeft:3, lifeT:900}, () => [m.x + m.face*60, m.z + 30]); ring(m.x + m.face*60, sy(m) - 40, '#b06aff'); SFX.skill(); } }},
@@ -1600,9 +1603,10 @@ function updateFx(){
     }
     if (p.kind === 'rockv'){ const o = p.owner; if (p.t < 22){ p.x = o.x + p.face*60; p.z = o.z; p.vx = 0; p.armed = false; } else { p.vx = p.face*6.5; p.armed = true; } }
     if (p.kind === 'chopspin'){ const o = p.owner; p.x = o.x; p.z = o.z; if (p.t > p.life || !o.alive()) p.dead = true; continue; }
+    if (p.kind === 'bdrag2'){ if (p.t % 3 === 0) particles.push({x:p.x + rnd(-p.h*.6, p.h*.6), y:G.st.FT + p.z - rnd(0, p.h*.8), vx:0, vy:-rnd(.3,1.2), life:24, max:24, col: p.king ? '#c8ffb8' : '#efe6cc', kind:'spark'}); if (p.t > p.life) p.dead = true; continue; }
     if (p.kind === 'prop' || p.kind === 'bdrag' || p.kind === 'erupt' || p.kind === 'ablade'){ if (p.kind === 'ablade'){ const o = p.owner; p.x = o.x; p.z = o.z; if (!o.alive() || o.state !== 'sp') p.dead = true; } if (p.kind === 'bdrag' && p.t % 3 === 0) particles.push({x:p.x + rnd(-60,60), y:G.st.FT + p.z + p.y + rnd(-40,40), vx:0, vy:-rnd(.3,1.2), life:24, max:24, col: p.king ? '#c8ffb8' : '#efe6cc', kind:'spark'}); if (p.t > p.life) p.dead = true; continue; }
     if (p.kind === 'barmor'){ const o = p.owner; p.x = o.x; p.z = o.z;
-      if (!o.alive() || !(o.boneArm > 0) || --o.boneArmT <= 0){ o.boneArm = 0; p.dead = true; continue; }
+      if (!o.alive() || !(o.boneArm > 0) || --o.boneArmT <= 0){ o.boneArm = 0; o.boneCdF = G.frame + 180; p.dead = true; continue; }
       if ((p.cd = (p.cd || 10) - 1) <= 0 && !['lying','getup','held','fall'].includes(o.state)){
         const f = foes(o).filter(f => f.hittable() && f.kind !== 'fort' && Math.abs(f.x - o.x) < 118 && Math.abs(f.z - o.z) < 42 && f.y > -150).sort((a, b) => Math.abs(a.x - o.x) - Math.abs(b.x - o.x))[0];
         if (f){ p.cd = 24; o.boneArm--; applyHit(f, f.x >= o.x ? 1 : -1, {dmg:10, kb:3, stun:24, unblock:true, sk:p.sk}, o, f.x, sy(f) - f.h*.55); (p.shots = p.shots || []).push({x0:o.x, y0:sy(o) - o.h*.5, x1:f.x, y1:sy(f) - f.h*.55, t0:p.t}); SFX.hit(); } else p.cd = 4; }
@@ -1914,7 +1918,7 @@ function drawFx(p){
       ctx.globalCompositeOperation = 'lighter'; ctx.translate(gx, gy - 50); ctx.scale(p.dir, 1);
       for (let i=0;i<7;i++){ const a = -.45 + i*.15 + Math.sin(t*.3 + i)*.03, L = 290; ctx.fillStyle = `rgba(255,${210 + i*5},90,${.18 + .1*Math.sin(t*.5 + i)})`; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a - .05)*L, Math.sin(a - .05)*L); ctx.lineTo(Math.cos(a + .05)*L, Math.sin(a + .05)*L); ctx.closePath(); ctx.fill(); }
       ctx.globalCompositeOperation = 'source-over'; vimg('vfx_case', 0, 10, 70, 0); break; }
-    case 'csoul': vimg('vfx_soul', gx, gy + p.y, 34, 0, p.vx < 0); break;
+    case 'csoul': vimg('vfx_soul', gx, gy + p.y, p.big ? 44 : 34, 0, p.vx < 0); break;
     case 'drill': { const s = p.size || 1, d = Math.sign(p.vx0 || p.vx || 1), L = 80*s, R = 24*s, k = Math.min(1, (p.life - t)/8, t/3); ctx.globalAlpha = Math.max(0, k); ctx.translate(gx, gy + p.y); ctx.scale(d, 1);
       ctx.strokeStyle = '#4adf2a'; ctx.lineWidth = 5*s; ctx.lineCap = 'round'; for (let i=-1;i<=1;i++){ ctx.beginPath(); ctx.moveTo(-L*.15, i*R*.45); ctx.quadraticCurveTo(-L*.45, i*R + Math.sin(t*.5 + i)*8, -L*.7, i*R*1.2 + Math.sin(t*.4 + i*2)*10); ctx.stroke(); }
       ctx.fillStyle = '#3a8a2a'; ctx.strokeStyle = '#1a3a10'; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(-L*.08, 0, R*.8, R*1.05, 0, 0, 7); ctx.fill(); ctx.stroke();
@@ -1933,6 +1937,11 @@ function drawFx(p){
     case 'bdrag': { const k = Math.min(1, t/10, (p.life - t)/10), rise = (1 - Math.min(1, t/12))*50, x = gx, y = gy + p.y + rise;
       ctx.globalAlpha = Math.max(0, k); ctx.globalCompositeOperation = 'lighter'; const gl = ctx.createRadialGradient(x, y, 10, x, y, p.h*.7); gl.addColorStop(0, p.king ? 'rgba(170,255,150,.45)' : 'rgba(230,230,200,.35)'); gl.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(x, y, p.h*.7, 0, 7); ctx.fill();
       ctx.globalCompositeOperation = 'source-over'; vimg(p.img, x, y + Math.sin(t*.25)*4, p.h, Math.sin(t*.15)*.05, p.face < 0); break; }
+    case 'bdrag2': { const M = BDR[p.img], im = IMG[p.img]; if (!M || !ok(im)) break; const n = M.n, fi = Math.min(n - 1, Math.floor(t/p.life*n)), sx = (fi % M.cols)*M.w, sy0 = Math.floor(fi / M.cols)*M.h, H = p.h, Wd = H*M.w/M.h, k = Math.min(1, t/6, (p.life - t)/8), rise = (1 - Math.min(1, t/8))*30;
+      ctx.globalAlpha = Math.max(0, k); ctx.translate(gx, gy); if (p.face < 0) ctx.scale(-1, 1);
+      ctx.globalCompositeOperation = 'lighter'; const gl = ctx.createRadialGradient(0, -H*.4, 10, 0, -H*.4, Wd*.6); gl.addColorStop(0, p.king ? 'rgba(170,255,150,.35)' : 'rgba(200,255,190,.22)'); gl.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = gl; ctx.beginPath(); ctx.ellipse(0, -H*.4, Wd*.6, H*.6, 0, 0, 7); ctx.fill();
+      ctx.globalCompositeOperation = 'source-over'; ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(0, 2, Wd*.38, 9, 0, 0, 7); ctx.fill();
+      ctx.drawImage(im, sx, sy0, M.w, M.h, -Wd/2, -H + 8 + rise, Wd, H); break; }
     case 'erupt': { const k = Math.min(1, t/5), f = Math.min(1, (p.life - t)/5); ctx.globalAlpha = Math.max(0, f); const h = 46*k; vimg('vfx_bspike', gx, gy - 10 - h, 30, -1.57, false); break; }
     case 'ablade': { const o = p.owner, ph = (t % 8)/8, a = -1.2 + ph*2.1, x = o.x - G.cam + o.face*14, y = sy(o) - o.h*.55; ctx.translate(x, y); ctx.scale(o.face, 1); ctx.rotate(a);
       ctx.globalCompositeOperation = 'lighter'; const L = p.red ? 190 : 175, g = ctx.createLinearGradient(0, 0, L, 0); g.addColorStop(0, p.red ? 'rgba(255,60,90,.0)' : 'rgba(160,74,255,0)'); g.addColorStop(.3, p.red ? 'rgba(255,60,90,.55)' : 'rgba(160,74,255,.55)'); g.addColorStop(1, 'rgba(255,255,255,.1)');
@@ -1976,7 +1985,7 @@ function drawFx(p){
       ctx.globalCompositeOperation = 'source-over'; vimg(key, gx, gy + p.y, 50, p.ang + .9); break; }
     case 'beast': { const fl = p.vx0 < 0, bob = p.spin ? 0 : Math.sin(t*.3)*6;
       ctx.globalAlpha = Math.min(1, (p.life - t)/10, t/4); if (p.img === 'vfx_tornado' || p.img === 'vfx_dcyc'){ ctx.translate(gx, gy + p.y); ctx.scale(1 + Math.sin(t*.6)*.08, 1); vimg(p.img, 0, -10, p.h, 0, false); break; }
-      vimg(p.img, gx, gy + p.y + bob, p.h, p.spin ? t*p.spin : (p.rot0 || 0), fl); break; }
+      if (p.tri){ for (const dy of [-34, 34]) vimg(p.img, gx - Math.sign(p.vx0)*14, gy + p.y + dy + bob, p.h*.85, 0, fl, .9); } vimg(p.img, gx, gy + p.y + bob, p.h, p.spin ? t*p.spin : (p.rot0 || 0), fl); break; }
     case 'gsw': { if (p.delay && t < p.delay) break; const k = Math.min(1, (p.life + (p.delay||0) - t)/10);
       ctx.globalAlpha = Math.max(0, k);
       if (!p.drop){ ctx.globalCompositeOperation = 'lighter'; const g = ctx.createRadialGradient(gx, gy, 4, gx, gy, p.hitR*1.4); g.addColorStop(0, p.col); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = g; ctx.globalAlpha = Math.max(0, k)*.5; ctx.beginPath(); ctx.ellipse(gx, gy, p.hitR*1.4, p.hitR*.45, 0, 0, 7); ctx.fill(); ctx.globalAlpha = Math.max(0, k); ctx.globalCompositeOperation = 'source-over'; vimg(p.img, gx, gy + p.y - p.h*.42, p.h, 0); }
@@ -2559,7 +2568,7 @@ const ICONS = {
   orb:'<circle cx="12" cy="12" r="6"/><path d="M12 2a10 10 0 010 20v-2a8 8 0 000-16z"/>', moon:'<path d="M15 3a9 9 0 100 18 7 7 0 010-18z"/>', heart:'<path d="M12 21l-8.5-8.6A5 5 0 0112 5.7a5 5 0 018.5 6.7z"/>',
 };
 function setSkillButtons(id){ const h = HEROES[id]; ['f','u','d'].forEach((k,i) => { $('s'+(i+1)).innerHTML = `<svg viewBox="0 0 24 24">${ICONS[h.sk[k].icon]}</svg>`; }); }
-function updateSkillDim(){ const p = G && G.player; if (!p || !p.hero) return; ['f','u','d'].forEach((k,i) => $('s'+(i+1)).classList.toggle('dim', p.riding || p.mp < p.hero.sk[k].cost * (p.costMul||1))); const dz = p.form === 'xgood' || p.form === 'xevil', ready = (p.sg >= 100 && !p.form) || dz, lab = dz ? '☯' : '★'; if ($('bS').textContent !== lab) $('bS').textContent = lab; $('bS').classList.toggle('ready', ready); $('bS').classList.toggle('dim', !ready); }
+function updateSkillDim(){ const p = G && G.player; if (!p || !p.hero) return; ['f','u','d'].forEach((k,i) => $('s'+(i+1)).classList.toggle('dim', p.riding || p.mp < p.hero.sk[k].cost * (p.costMul||1) || (k === 'u' && boneLocked(p)))); const dz = p.form === 'xgood' || p.form === 'xevil', ready = (p.sg >= 100 && !p.form) || dz, lab = dz ? '☯' : '★'; if ($('bS').textContent !== lab) $('bS').textContent = lab; $('bS').classList.toggle('ready', ready); $('bS').classList.toggle('dim', !ready); }
 
 /* ================= AI ================= */
 const AI_LV = [{react:22, aggr:.45, guard:.25, skill:.18}, {react:14, aggr:.62, guard:.45, skill:.26}, {react:8, aggr:.8, guard:.65, skill:.34}];
@@ -2621,7 +2630,7 @@ function aiInput(u){
         else if (u.id === 'curse' && adx > 160 && adz < 30) c = 'd';
         else if (u.id === 'lux' && !G.units.some(v => v.master === u && v.id === 'angelw' && !v.dead) && Math.random() < .5) c = 'u';
         else if (u.id === 'lux' && adx > 120 && adz < 30) c = Math.random() < .5 ? 'f' : 'd';
-        else if (u.id === 'bone' && !(u.boneArm > 0) && adx < 160 && Math.random() < .35) c = 'u';
+        else if (u.id === 'bone' && !boneLocked(u) && adx < 160 && Math.random() < .35) c = 'u';
         else if (u.id === 'kael' && fx.some(p => p.owner && p.owner.team !== u.team && p.vx && Math.abs(p.x - u.x) < 220 && Math.abs(p.z - u.z) < 40)) c = 'f';
         else if (u.id === 'taoist' && adx > 140 && adx < 420 && Math.random() < .5) c = Math.random() < .5 ? 'f' : 'u';
         else if (u.id === 'lord' && G.units.filter(v => v.master === u && v.alive() && v.hitsLeft > 1).length < 2 && Math.random() < .5) c = 'f';
