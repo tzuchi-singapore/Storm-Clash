@@ -293,6 +293,7 @@ const HEROES = {
   cbotf:{ summon:true, ranged:300, chain:['rn1'], name:'Fire Bot', color:'#ff7a3a', hp:1, spd:2.4, pow:.8, h:84, stats:[1,1,1], bio:'', sk:{ f:{name:'',cost:9999,icon:'star4'}, u:{name:'',cost:9999,icon:'star4'}, d:{name:'',cost:9999,icon:'star4'} } },
   cboti:{ summon:true, ranged:300, chain:['rn1'], name:'Ice Bot', color:'#9fe6ff', hp:1, spd:2.4, pow:.8, h:84, stats:[1,1,1], bio:'', sk:{ f:{name:'',cost:9999,icon:'star4'}, u:{name:'',cost:9999,icon:'star4'}, d:{name:'',cost:9999,icon:'star4'} } },
   angelw:{ summon:true, chain:['g1','g2','g3'], name:'Whip Angel', color:'#fff3b0', hp:1, spd:3.6, pow:.9, h:112, stats:[1,1,1], bio:'', sk:{ f:{name:'',cost:9999,icon:'star4'}, u:{name:'',cost:9999,icon:'star4'}, d:{name:'',cost:9999,icon:'star4'} } },
+  kdragon:{ summon:true, superArmor:true, ranged:420, chain:['rn1'], name:'King Bone Dragon', color:'#c8ffb8', hp:1, spd:.01, pow:1, h:200, stats:[1,1,1], bio:'', sk:{ f:{name:'',cost:9999,icon:'star4'}, u:{name:'',cost:9999,icon:'star4'}, d:{name:'',cost:9999,icon:'star4'} } },
   archangel:{ summon:true, superArmor:true, chain:['g1','g2','g3','g4'], name:'Archangel', color:'#ffd84a', hp:1, spd:3.4, pow:1.15, h:168, stats:[1,1,1], bio:'', sk:{ f:{name:'',cost:9999,icon:'star4'}, u:{name:'',cost:9999,icon:'star4'}, d:{name:'',cost:9999,icon:'star4'} } },
   angelk:{ summon:true, name:'Sword Angel', color:'#ffe9a0', hp:1, spd:4.0, pow:.9, h:112, stats:[1,1,1], bio:'', sk:{ f:{name:'',cost:9999,icon:'star4'}, u:{name:'',cost:9999,icon:'star4'}, d:{name:'',cost:9999,icon:'star4'} } },
   kclone:{ summon:true, atlas:'kaelx', name:'Shadow', color:'#5a2a8a', hp:1, spd:4.0, pow:.85, h:118, stats:[1,1,1], bio:'', shade:'#1a0828', sk:{ f:{name:'',cost:9999,icon:'star4'}, u:{name:'',cost:9999,icon:'star4'}, d:{name:'',cost:9999,icon:'star4'} } },
@@ -419,19 +420,19 @@ const STORY = [
       { type:'hold', stage:'invade', lvl:2, boss:'queen', foes:['brute','madsci','vraxx'], allies:['mira','bella','rio'], art:'story_s4_2', title:'Hold the Fort: Hospital Siege', text:'The invaders surround the hospital where Dr. Mira treats the wounded. Hold it for 10 waves. Rio\'s sisters come to help, and Queen Zyra lands at the end with her brood.' },
       { type:'team', n:4, foes:['vraxx','queen','brute','madsci'], lvl:2, stage:'ship', art:'story_s4_5', title:'4 vs 4: Last Stand of the Invaders', text:'Vraxx and Zyra fight side by side with every champion they have left. Beat all four and the invaders must fly back to the stars.' },
     ] },
-  { name:'The Bone King\'s Rebellion', cover:'story_cover5', intro:'In a realm of magic, failed sorcerers and outlaws are thrown into the Forsaken Lands. Their leader Ossmor was born with rare ancient bone magic, and now he marches to take the whole realm. Twin brothers Kael and Lucien, one dark and one light, stand in his way.',
+  { name:'The Bone King\'s Rebellion', cover:'story_cover5b', intro:'In a realm of magic, failed sorcerers and outlaws are thrown into the Forsaken Lands. Their leader Ossmor was born with rare ancient bone magic, and now he marches to take the whole realm. Twin brothers Kael and Lucien, one dark and one light, stand in his way.',
     steps:[
       { type:'mission', M:{ name:'The Forsaken Lands', stage:'forsaken', lv:1, zones:[ [[{k:'exile',n:3}],[{k:'exile',n:2},{k:'warlock',n:2}]], [[{k:'exile',n:3,side:'L'},{k:'warlock',n:1}],[{k:'exile',n:3},{k:'warlock',n:2}]] ] }, art:'story_s5_1', title:'The Forsaken Lands', text:'Kael and Lucien follow a trail of stolen magic into the Forsaken Lands. Exiled sorcerers kneel before Ossmor, the Bone King, as giant bones burst from the ground. Break through his outlaws!' },
       { type:'versus', foe:'curse', lvl:1, stage:'forsaken', art:'story_s5_2', title:'Duel: Dr. Malgrin', text:'Ossmor\'s right-hand man mixes machines with ancient curses. His cursed book shoots soul energy, and his portal machine can call a champion from another world. Beat him before he opens it!' },
       { type:'mission', M:{ name:'Curse Laboratory', stage:'forsaken', lv:1, zones:[ [[{k:'exile',n:4}],[{k:'warlock',n:3},{k:'exile',n:2,side:'L'}]], [[{k:'exile',n:3},{k:'warlock',n:2}],[{k:'hero',id:'curse',n:1},{k:'exile',n:2}]] ] }, art:'story_s5_2', title:'Curse Laboratory', text:'In his hidden lab, Dr. Malgrin powers up the portal machine. Inside the ring swirls another dimension. Smash his guards and stop the machine.' },
       { type:'battle', stage:'forsaken', art:'story_s5_1', title:'Battle: Break the Exile Camp', text:'The exiles built a war camp. Take the gold mines, raise your army and break their fort before they march on the capital.' },
-      { type:'mission', M:{ name:'Siege of the Capital', stage:'capital', lv:2, zones:[ [[{k:'exile',n:4},{k:'warlock',n:1}],[{k:'warlock',n:3},{k:'exile',n:2,side:'L'}]], [[{k:'hero',id:'curse',n:1},{k:'exile',n:3}],[{k:'exile',n:3},{k:'warlock',n:2}]] ] }, art:'story_s5_3', title:'Siege of the Capital', text:'The outlaws crack the gate of the Crystal Capital. Bone spikes and curse bolts fly over the lantern streets. The twins rush in to defend their home.' },
-      { type:'team', n:2, foes:['curse','madsci'], lvl:1, stage:'capital', art:'story_s5_3', title:'2 vs 2: Mad Minds', text:'Malgrin\'s portal has pulled Dr. Vex into this world. Two mad scientists, one team. Two of your heroes must stop them.' },
-      { type:'mission', M:{ name:'Hall of Bones', stage:'bonehall', lv:2, zones:[ [[{k:'exile',n:4},{k:'warlock',n:2}],[{k:'warlock',n:3},{k:'exile',n:3,side:'L'}]], [[{k:'hero',id:'brute',n:1},{k:'warlock',n:2}],[{k:'exile',n:4},{k:'warlock',n:2}]] ] }, art:'story_s5_4', title:'Hall of Bones', text:'The twins chase the rebels into Ossmor\'s throne hall, built from the ribs of an ancient dragon. Blue flames light the way.' },
-      { type:'team', n:3, foes:['bone','curse','brute'], lvl:2, stage:'bonehall', art:'story_s5_4', title:'3 vs 3: The Bone Court', text:'Ossmor steps down from his throne with Malgrin and a tank brute from the portal. Watch his bone armour: it strikes anyone who gets close. Three of your heroes must win.' },
-      { type:'mission', M:{ name:'The Bone Throne', stage:'bonehall', lv:2, zones:[ [[{k:'exile',n:4},{k:'warlock',n:2}],[{k:'hero',id:'curse',n:1},{k:'warlock',n:3}]], [[{k:'hero',id:'bone',n:1,hpMul:2.2},{k:'hero',id:'curse',n:1,hpMul:1.4},{k:'exile',n:3},{k:'warlock',n:2}]] ] }, art:'story_s5_4', title:'The Bone Throne', text:'Ossmor waits on the bone throne. When he takes his dragon form he grows bone wings, floats above the ground and calls the King Bone Dragon.' },
-      { type:'hold', stage:'capital', lvl:2, boss:'bone', foes:['curse','brute','madsci'], allies:['kael','lux','yao'], art:'story_s5_3', title:'Hold the Fort: Last Wall of the Capital', text:'The rebels storm the last wall of the Crystal Capital. Hold it for 10 waves. Ossmor himself comes for the wall at the end.' },
-      { type:'team', n:4, foes:['bone','curse','lord','queen'], lvl:2, stage:'bonehall', art:'story_s5_5', title:'4 vs 4: The Final Rebellion', text:'Malgrin opens his portal one last time and pulls Vortan and Queen Zyra into the fight beside Ossmor. Win this, and the Forsaken and the capital can finally live in peace.' },
+      { type:'mission', M:{ name:'Siege of the Capital', stage:'capital', lv:2, zones:[ [[{k:'exile',n:4},{k:'warlock',n:1}],[{k:'warlock',n:3},{k:'exile',n:2,side:'L'}]], [[{k:'hero',id:'curse',n:1},{k:'exile',n:3}],[{k:'exile',n:3},{k:'warlock',n:2}]] ] }, art:'story_s5_3b', title:'Siege of the Capital', text:'The outlaws crack the gate of the Crystal Capital. Bone spikes and curse bolts fly over the lantern streets. The twins rush in to defend their home.' },
+      { type:'team', n:2, foes:['curse','madsci'], lvl:1, stage:'capital', art:'story_s5_3b', title:'2 vs 2: Mad Minds', text:'Malgrin\'s portal has pulled Dr. Vex into this world. Two mad scientists, one team. Two of your heroes must stop them.' },
+      { type:'mission', M:{ name:'Hall of Bones', stage:'bonehall', lv:2, zones:[ [[{k:'exile',n:4},{k:'warlock',n:2}],[{k:'warlock',n:3},{k:'exile',n:3,side:'L'}]], [[{k:'hero',id:'brute',n:1},{k:'warlock',n:2}],[{k:'exile',n:4},{k:'warlock',n:2}]] ] }, art:'story_s5_4b', title:'Hall of Bones', text:'The twins chase the rebels into Ossmor\'s throne hall, built from the ribs of an ancient dragon. Blue flames light the way.' },
+      { type:'team', n:3, foes:['bone','curse','brute'], lvl:2, stage:'bonehall', art:'story_s5_4b', title:'3 vs 3: The Bone Court', text:'Ossmor steps down from his throne with Malgrin and a tank brute from the portal. Watch his bone armour: it strikes anyone who gets close. Three of your heroes must win.' },
+      { type:'mission', M:{ name:'The Bone Throne', stage:'bonehall', lv:2, zones:[ [[{k:'exile',n:4},{k:'warlock',n:2}],[{k:'hero',id:'curse',n:1},{k:'warlock',n:3}]], [[{k:'hero',id:'bone',n:1,hpMul:2.2},{k:'hero',id:'curse',n:1,hpMul:1.4},{k:'exile',n:3},{k:'warlock',n:2}]] ] }, art:'story_s5_4b', title:'The Bone Throne', text:'Ossmor waits on the bone throne. When he takes his dragon form he grows bone wings, floats above the ground and calls the King Bone Dragon.' },
+      { type:'hold', stage:'capital', lvl:2, boss:'bone', foes:['curse','brute','madsci'], allies:['kael','lux','yao'], art:'story_s5_3b', title:'Hold the Fort: Last Wall of the Capital', text:'The rebels storm the last wall of the Crystal Capital. Hold it for 10 waves. Ossmor himself comes for the wall at the end.' },
+      { type:'team', n:4, foes:['bone','curse','lord','queen'], lvl:2, stage:'bonehall', art:'story_s5_5b', title:'4 vs 4: The Final Rebellion', text:'Malgrin opens his portal one last time and pulls Vortan and Queen Zyra into the fight beside Ossmor. Win this, and the Forsaken and the capital can finally live in peace.' },
     ] },
 ];
 const STEP_ICON = { mission:'⚔', versus:'VS', battle:'♜', hold:'⛨', team:'' };
@@ -572,6 +573,7 @@ class Unit {
     if (this.swapCd > 0) this.swapCd--;
     if (this.webT > 0) this.webT--;
     if (this.absorbT > 0) this.absorbT--;
+    if (this.id === 'kdragon'){ this.vx = 0; this.vy = 0; this.y = 0; this.run = 0; if (['hurt','fall','lying','getup','held','jump'].includes(this.state)) this.set('idle'); }
     if (this.slowT > 0) this.slowT--;
     if (this.painCd > 0) this.painCd--;
     if (this.painT > 0){ this.vx *= .5; this.run = 0; if (this.hp > 0 && !this.dead && this.state !== 'hurt' && this.state !== 'held'){ if (this.grabbed) releaseHeld(this); this.set('hurt'); this.y = 0; this.vy = 0; } this.stunT = 9999; if (--this.painT === 0){ this.invT = 30; this.stunT = 0; if (this.state === 'hurt') this.set('idle'); } }
@@ -1015,6 +1017,7 @@ function heroShot(u, n){
   const f = u.face, id = u.sid, z0 = u.z;
   if (id === 'curse'){ const last = n === 3; proj({kind:'csoul', owner:u, x:u.x + f*42, z:z0, y:u.y - 74, vx:f*9.5, ph:0, life:16, dmg:20, kb: last ? 4 : 1.4, stun:18, r:18, launch: last ? -6 : 0, kd:last, big:true, sk:'curse.n'}); SFX.arrow(); }
   else if (id === 'lux'){ const last = n === 3; proj({kind:'arrow', gold:true, owner:u, x:u.x + f*36, z:z0, y:u.y - 66, vx:f*14, life:11, dmg:20, kb: last ? 4 : 1.4, stun:16, r:14, launch: last ? -6 : 0, kd:last, sk:'lux.n'}); SFX.arrow(); }
+  else if (id === 'kdragon'){ beast(u, 'vfx_bspear', {x:u.x + f*60, y:-96, vx:11, life:46, maxHits:1, every:99, dmg:12, h:34, hitR:52, kb:2, stun:24, stall:false, lastLaunch:0, col:'#c8ffb8', sk:'kdragon.n'}); SFX.heavy(); }
   else if (id === 'cbotf' || id === 'cboti'){ const fire = id === 'cbotf'; beast(u, fire ? 'vfx_fireball' : 'vfx_icerocket', {vx:9, y:-46, life:40, maxHits:1, every:99, dmg:10, kb:1.5, stun:16, burn: fire ? 90 : 0, freeze: fire ? 0 : 26, h:30, hitR:30, stall:false, lastLaunch:0, col: fire ? '#ff7a3a' : '#bff4ff', sk:id + '.n'}); SFX.arrow(); }
 }
 function chargeKey(m, t, inp, key, need, col){
@@ -1124,7 +1127,7 @@ Object.assign(SPEC, {
     u:{dur:34, pose:'sk_u', tick(m,t){ m.vx = 0; if (t===12) boneArmor(m, 8); }},
     d:{dur:100, pose:(m)=> m.t < 36 ? ['atk1','atk2','atk3'][Math.floor(m.t/7) % 3] : 'sk_d', tick(m,t){ m.vx *= .7;
         if (t >= 6 && t <= 34 && (t - 6) % 7 === 0) swing(m, 130, {dmg:10, kb:.4, stun:30, sk:'bonex.d'}, '#c8ffb8');
-        if (t===36){ m.drag = proj({kind:'bdrag2', owner:m, img:'fx_bdr3', x:m.x + m.face*185, z:Math.max(2, m.z - 4), face:m.face, life:66, h:235, king:true}); dust(m.x + m.face*160, m.z, 20); SFX.roar(); shake = 9; }
+        if (t===36){ m.drag = proj({kind:'bdrag2', owner:m, img:'fx_bdr3', x:m.x + m.face*185, z:Math.max(2, m.z - 4), face:m.face, life:66, h:235, king:true, stay:true}); dust(m.x + m.face*160, m.z, 20); SFX.roar(); shake = 9; }
         if (t===75 && m.drag){ const d = m.drag; beast(m, 'vfx_bspear', {x:m.x + m.face*80, z:0, y:-96, vx:11, life:56, maxHits:5, every:6, dmg:10, h:40, hitR:76, hitZ:42, kb:1.5, stun:28, lastLaunch:-11, col:'#c8ffb8', tri:true, sk:'bonex.d'}); SFX.heavy(); shake = 10; } }},
   },
   curse: {
@@ -1605,6 +1608,7 @@ function updateFx(){
     }
     if (p.kind === 'rockv'){ const o = p.owner; if (p.t < 22){ p.x = o.x + p.face*60; p.z = o.z; p.vx = 0; p.armed = false; } else { p.vx = p.face*6.5; p.armed = true; } }
     if (p.kind === 'chopspin'){ const o = p.owner; p.x = o.x; p.z = o.z; if (p.t > p.life || !o.alive()) p.dead = true; continue; }
+    if (p.kind === 'bdrag2' && p.stay && p.t === p.life && p.owner.alive()){ const o = p.owner; for (const v of G.units) if (v.master === o && v.id === 'kdragon' && !v.dead) vanish(v); const u = summon(o, 'kdragon', p.x, p.z, {hitsLeft:6, lifeT:480, shotCd:60}); u.face = p.face; u.inv = 0; }
     if (p.kind === 'bdrag2'){ if (p.t % 3 === 0) particles.push({x:p.x + rnd(-p.h*.6, p.h*.6), y:G.st.FT + p.z - rnd(0, p.h*.8), vx:0, vy:-rnd(.3,1.2), life:24, max:24, col: p.king ? '#c8ffb8' : '#efe6cc', kind:'spark'}); if (p.t > p.life) p.dead = true; continue; }
     if (p.kind === 'prop' || p.kind === 'bdrag' || p.kind === 'erupt' || p.kind === 'ablade'){ if (p.kind === 'ablade'){ const o = p.owner; p.x = o.x; p.z = o.z; if (!o.alive() || o.state !== 'sp') p.dead = true; } if (p.kind === 'bdrag' && p.t % 3 === 0) particles.push({x:p.x + rnd(-60,60), y:G.st.FT + p.z + p.y + rnd(-40,40), vx:0, vy:-rnd(.3,1.2), life:24, max:24, col: p.king ? '#c8ffb8' : '#efe6cc', kind:'spark'}); if (p.t > p.life) p.dead = true; continue; }
     if (p.kind === 'barmor'){ const o = p.owner; p.x = o.x; p.z = o.z;
@@ -1941,7 +1945,7 @@ function drawFx(p){
     case 'bdrag': { const k = Math.min(1, t/10, (p.life - t)/10), rise = (1 - Math.min(1, t/12))*50, x = gx, y = gy + p.y + rise;
       ctx.globalAlpha = Math.max(0, k); ctx.globalCompositeOperation = 'lighter'; const gl = ctx.createRadialGradient(x, y, 10, x, y, p.h*.7); gl.addColorStop(0, p.king ? 'rgba(170,255,150,.45)' : 'rgba(230,230,200,.35)'); gl.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(x, y, p.h*.7, 0, 7); ctx.fill();
       ctx.globalCompositeOperation = 'source-over'; vimg(p.img, x, y + Math.sin(t*.25)*4, p.h, Math.sin(t*.15)*.05, p.face < 0); break; }
-    case 'bdrag2': { const M = BDR[p.img], im = IMG[p.img]; if (!M || !ok(im)) break; const n = M.n, fi = Math.min(n - 1, Math.floor(t/p.life*n)), sx = (fi % M.cols)*M.w, sy0 = Math.floor(fi / M.cols)*M.h, H = p.h, Wd = H*M.w/M.h, k = Math.min(1, t/6, (p.life - t)/8), rise = (1 - Math.min(1, t/8))*30;
+    case 'bdrag2': { const M = BDR[p.img], im = IMG[p.img]; if (!M || !ok(im)) break; const n = M.n, fi = Math.min(n - 1, Math.floor(t/p.life*n)), sx = (fi % M.cols)*M.w, sy0 = Math.floor(fi / M.cols)*M.h, H = p.h, Wd = H*M.w/M.h, k = p.stay ? Math.min(1, t/6) : Math.min(1, t/6, (p.life - t)/8), rise = (1 - Math.min(1, t/8))*30;
       ctx.globalAlpha = Math.max(0, k); ctx.translate(gx, gy); if (p.face < 0) ctx.scale(-1, 1);
       ctx.globalCompositeOperation = 'lighter'; const gl = ctx.createRadialGradient(0, -H*.4, 10, 0, -H*.4, Wd*.6); gl.addColorStop(0, p.king ? 'rgba(170,255,150,.35)' : 'rgba(200,255,190,.22)'); gl.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = gl; ctx.beginPath(); ctx.ellipse(0, -H*.4, Wd*.6, H*.6, 0, 0, 7); ctx.fill();
       ctx.globalCompositeOperation = 'source-over'; ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(0, 2, Wd*.38, 9, 0, 0, 7); ctx.fill();
@@ -2181,6 +2185,9 @@ function drawUnit(u){
   const t = G.frame + (u.seed||0);
   const sh = Math.max(.4, 1 + u.y/220), big = u.kind === 'rider' || u.kind === 'mount' || u.riding;
   ctx.fillStyle = 'rgba(30,15,5,.35)'; ctx.beginPath(); ctx.ellipse(gx, gy, (big?56:24)*sh, 7*sh, 0, 0, 7); ctx.fill();
+  if (u.id === 'kdragon'){ const M = BDR.fx_bdr3, im = IMG.fx_bdr3; if (M && ok(im)){ const fi = u.state === 'atk' ? Math.min(15, 10 + Math.floor(u.t/4)) : [0,1,2,3,2,1][Math.floor(t/9) % 6], sx = (fi % M.cols)*M.w, sy0 = Math.floor(fi / M.cols)*M.h, H = 235, Wd = H*M.w/M.h;
+      ctx.save(); ctx.translate(gx, gy); if (u.face < 0) ctx.scale(-1, 1); if (u.flash) ctx.globalAlpha = .7; ctx.globalAlpha *= Math.min(1, (u.lifeT || 99)/20); ctx.drawImage(im, sx, sy0, M.w, M.h, -Wd/2, -H + 8, Wd, H); ctx.restore(); }
+    return; }
   if (u.team === 0 && u.kind !== 'hero'){ ctx.strokeStyle = 'rgba(80,160,255,.85)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(gx, gy, 22, 6, 0, 0, 7); ctx.stroke(); }
   if (u.inv > 0 && (u.inv>>2)%2 === 0) return;
   if (u.hide > 0) return;
@@ -2597,6 +2604,7 @@ function aiInput(u){
   const wide = o.kind === 'fort' || o.kind === 'barricade';
   const dx = o.x - u.x, adx = Math.abs(dx), dz = wide ? 0 : o.z - u.z, adz = Math.abs(dz);
   out.faceTo = dx > 0 ? 1 : -1;
+  if (u.id === 'kdragon'){ if (u.can()){ u.face = out.faceTo; if (adx < 460 && adz < 70 && (u.shotCd = (u.shotCd || 0) - 1) <= 0){ u.shotCd = 100; out.ev.push('A'); } } return out; }
   if (u.id === 'cerb' && u.can() && (u.headCd = (u.headCd || 40) - 1) <= 0 && adx < 560 && adz < 70){ u.face = out.faceTo; cerbFire(u, o); u.headCd = 64; return out; }
   if (u.kind === 'archer' || u.kind === 'trooper' || u.kind === 'warlock' || u.kind === 'bomber' || u.kind === 'shaman'){
     if (--u.cool <= 0 && (adz < 14 || wide) && adx < 520 && adx > 100){ u.face = out.faceTo; out.act = 'shoot'; if (u.kind === 'bomber'){ u.btx = o.x; u.btz = o.z; } u.cool = rnd(70,120) - (u.team ? G.lv*15 : 15); return out; }
@@ -2652,7 +2660,7 @@ function aiInput(u){
   else if (adx < (RG ? RG*.4 : 24) && !wide){ if (dx > 0) out.l = true; else out.r = true; }
   else if (u.kind !== 'hero' && u.can()) u.face = out.faceTo;
   if (adx <= reach + 8 && adz < 18){
-    if (u.kind === 'hero'){ if (RG && u.summon && (u.shotCd = (u.shotCd || 0) - 1) > 0) {} else if (Math.random() < L.aggr*.5){ if (RG && u.summon) u.shotCd = 70; u.face = out.faceTo; out.ev.push('A'); } }
+    if (u.kind === 'hero'){ if (RG && u.summon && (u.shotCd = (u.shotCd || 0) - 1) > 0) {} else if (Math.random() < L.aggr*.5){ if (RG && u.summon) u.shotCd = u.id === 'kdragon' ? 110 : 70; u.face = out.faceTo; out.ev.push('A'); } }
     else if (--u.cool <= 0){ u.face = out.faceTo; out.ev.push('A'); u.cool = rnd(50,95) - (u.team ? G.lv*12 : 10); }
   }
   if (u.kind === 'hero' && Math.random() < .004) out.ev.push('J');
