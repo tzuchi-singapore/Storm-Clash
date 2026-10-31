@@ -3853,6 +3853,7 @@ function drawTeam(){
   btn(360, 452, 240, 62, 'FIGHT!', true, () => { if (!SAVE.team[0]) return; SFX.go(); if (story){ storyStart(S.sch, S.sst); return; } if (battle){ if (!SAVE.team[1]) SAVE.team[1] = HERO_IDS.find(h => h !== SAVE.team[0]); if (hold) startHold(S.holdStage); else startBattle(); } else startMission(S.mi); });
   if (hold){ const dv = SAVE.hdiff != null ? SAVE.hdiff : 1; ctx.fillStyle = '#fff'; ctx.font = '900 13px ' + UIF; ctx.textAlign = 'center'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.6)'; ctx.strokeText('Difficulty', 722, 462); ctx.fillText('Difficulty', 722, 462);
     ['Easy','Normal','Hard'].forEach((l, i) => btn(620 + i*68, 470, 64, 36, l, dv === i, () => { SAVE.hdiff = i; persist(); SFX.menu(); }, true, dv === i ? ['#2f8a5a','#2fb7e8','#c0392b'][i] : '#7a5a2a')); }
+  petButton(160, 466, 188, 40, 'team', 420);
   btn(30, 466, 120, 40, '‹ Back', false, () => { S.screen = story ? 'scene' : (S.mode === 'hold' || S.mode === 'battle') ? 'modes' : 'missions'; }, true, '#7a5a2a');
   gear();
   menuEnd();
@@ -4239,6 +4240,7 @@ function drawScene(){
   btn(640, 404, 256, 52, 'FIGHT!', true, () => { SFX.go(); storyStart(c, i); });
   btn(640, 464, 124, 38, 'Change Team', false, () => { S.mode = 'story'; S.screen = 'team'; }, true, '#2a6a9a');
   btn(772, 464, 124, 38, 'Map', false, () => { S.screen = 'chapter'; }, true, '#7a5a2a');
+  petButton(640, 356, 256, 40, 'scene', 312);
   menuEnd();
 }
 function storyStart(c, i){
