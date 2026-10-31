@@ -2663,9 +2663,9 @@ function petTick(){
   if (u.hp <= 0){ u.down = true; u.reviveT = petRevive(lv); u.hp = 0; u.shieldN = 0; u.buffT2 = 0; if (u.state !== 'fall' && u.state !== 'lying'){ u.set('fall'); u.vy = -4; u.vx = -u.face*2; }
     for (const v of G.units) if (v.master === u && !v.dead) vanish(v); addMsg(`<a>${D.name}</a> is down. Back in ${Math.ceil(u.reviveT/60)}s.`); return; }
   if (pl && Math.abs(pl.x - u.x) > 700 && u.can()){ smoke(u.x, u.z, 8); u.x = pl.x - pl.face*70; u.z = pl.z; smoke(u.x, u.z, 8); }
-  const far = pl && Math.abs(pl.x - u.x) > 240 && !u.tgtNear, roar = u.buffT2 > 0;
+  const far = (pl && Math.abs(pl.x - u.x) > 240 && !u.tgtNear) || (u.tgtNear && u.tgtDist > 150), roar = u.buffT2 > 0;
   if (u.buffT2 > 0){ u.buffT2--; if (G.frame % 4 === 0) particles.push({x:u.x + rnd(-20,20), y:sy(u) - rnd(10, u.h), vx:0, vy:-rnd(.5,1.5), life:20, max:20, col:D.col, kind:'fire'}); }
-  u.spd = u.spdBase * (far ? 2.2 : 1) * (roar ? 1.5 : 1); u.pow = u.powBase * (roar ? 1.5 : 1); if (roar) u.mp = Math.min(300, u.mp + .3);
+  u.spd = (far ? Math.max(u.spdBase*2.2, 3.6) : u.spdBase) * (roar ? 1.5 : 1); u.pow = u.powBase * (roar ? 1.5 : 1); if (roar) u.mp = Math.min(300, u.mp + .3);
   u.mp = Math.min(300, u.mp + .25);
   if (lv >= 15 && G.frame % 10 === 0) for (const f of foes(u)) if (f.kind !== 'fort' && f.kind !== 'barricade' && Math.abs(f.x - u.x) < 120 && Math.abs(f.z - u.z) < 50){ if (ice) f.slowT = Math.max(f.slowT || 0, 30); else f.burn = Math.max(f.burn || 0, 45); }
   if (lv >= 25 && (u.miniCd = (u.miniCd == null ? 90 : u.miniCd) - 1) <= 0 && u.can()){ u.miniCd = 600; const kn = lv >= 45, sid = (kn ? 'gmk_' : 'gmi_') + D.el;
@@ -2677,10 +2677,10 @@ function petAI(u, out){
   if (u.down || (!u.can() && u.state !== 'atk')) return out;
   const pl = u.master, D = PET_DEF[u.pid], lv = u.petLv;
   let o = null, bd = 1e9; for (const f of foes(u)){ if (f.kind === 'fort' && G.mode !== 'battle') continue; if (f.kind === 'barricade') continue; const d = Math.abs(f.x - u.x) + Math.abs(f.z - u.z)*2; if (d < bd && (!pl || Math.abs(f.x - pl.x) < 560)){ bd = d; o = f; } }
-  u.tgtNear = !!o && bd < 660;
+  u.tgtNear = !!o && bd < 660; u.tgtDist = bd;
   const go = (tx, tz, tol) => { if (Math.abs(tx - u.x) > tol){ if (tx > u.x) out.r = true; else out.l = true; } if (Math.abs(tz - u.z) > 8){ if (tz > u.z) out.d = true; else out.u = true; } };
   if (!o || bd > 300){ const it = G.items.find(it => !it.taken && Math.abs(it.x - u.x) < 340); if (it){ go(it.x, it.z, 6); return out; } }
-  if (!o || bd > 660){ if (pl) go(pl.x - pl.face*80, Math.max(6, Math.min(ZMAX()-6, pl.z + 26)), 34); return out; }
+  if (!o || bd > 660){ if (pl) go(pl.x - pl.face*70, Math.max(6, Math.min(ZMAX()-6, pl.z + 8)), 34); return out; }
   const dx = o.x - u.x, adx = Math.abs(dx), dz = o.z - u.z, adz = Math.abs(dz); out.faceTo = dx > 0 ? 1 : -1;
   if ((u.skCd = (u.skCd || 0) - 1) <= 0 && (u.can() || (u.state === 'atk' && u.t >= 6))){
     const has = k => lv >= D.sk[k].lv, okk = k => has(k) && u.mp >= D.sk[k].cost; let c = null;
