@@ -864,7 +864,7 @@ function applyHit(def, dir, a, src, hx, hy){
   if (def.state === 'ult' && def.hp - dmg*.5 > 0){ def.hp -= dmg*.5; sparks(hx, hy, '#ffe680', 9); SFX.block(); return true; }
   if (def.armor > 0 && def.hp - dmg*.5 > 0){ def.hp -= dmg*.5; sparks(hx, hy, '#ffb347', 9); SFX.block(); if (def.armorHits != null && --def.armorHits <= 0){ def.armor = Math.min(def.armor, 10); def.armorHits = null; } return true; }
   if (src && src.crit && !def.summon && Math.random() < src.crit){ dmg *= 1.8; particles.push({x:def.x, y:sy(def) - def.h - 24, vx:0, vy:-1, life:40, max:40, col:'#ffd84a', kind:'text', txt:'CRIT!'}); sparks(hx, hy, '#ffd84a', 10); }
-  if (!def.summon) def.hp -= dmg; def.lastHitBy = src;
+  if (!def.summon || def.pet) def.hp -= dmg; def.lastHitBy = src;
   if (src && src.vamp && src.hp > 0 && !src.dead) src.hp = Math.min(src.maxhp, src.hp + dmg*src.vamp);
   { const ls = src && (src.summon ? src.master : src); if (ls && ls.form === 'xevil' && ls.hp > 0 && !ls.dead && !def.summon) ls.hp = Math.min(ls.maxhp, ls.hp + ls.maxhp*.01); }
   if (def.thorns && src && src !== def && !a.kind && src.kind !== 'fort' && src.hp > 1){ src.hp = Math.max(1, src.hp - dmg*def.thorns); src.flash = 4; sparks(src.x, sy(src) - src.h*.5, '#c8a060', 5); }
@@ -2629,7 +2629,7 @@ const PET_DEF = {
          b:{name:'Meteor Storm',lv:50,cost:150,img:'vfx_phail_f',d:'Ultimate: meteors rain down and burn, up to 10 hits. Revive time -5s.'} } },
 };
 const PET_SK = ['f','u','a','s','m','o','r','t','k','b'], PET_ACT = ['f','u','s','o','b'];
-for (const pid in PET_DEF){ const P = PET_DEF[pid]; P.ids.forEach((id, i) => { const sk = {}; for (const k of PET_ACT) sk[k === 'o' ? 'd' : k] = {name:P.sk[k].name, cost:P.sk[k].cost, icon:'star4'}; HEROES[id] = { summon:true, pet:true, name:P.name, title:P.stages[i], color:P.col, hp:1, spd:1.8, pow:.53, h:P.hs[i], stats:[1,1,1], bio:'', sk }; }); }
+for (const pid in PET_DEF){ const P = PET_DEF[pid]; P.ids.forEach((id, i) => { const sk = {}; for (const k of PET_ACT) sk[k === 'o' ? 'd' : k] = {name:P.sk[k].name, cost:P.sk[k].cost, icon:'star4'}; HEROES[id] = { summon:true, pet:true, name:P.name, title:P.stages[i], color:P.col, hp:1, spd:.9, pow:.26, h:P.hs[i], stats:[1,1,1], bio:'', sk }; }); }
 const D9 = { f:{name:'',cost:9999,icon:'star4'}, u:{name:'',cost:9999,icon:'star4'}, d:{name:'',cost:9999,icon:'star4'} };
 HEROES.gmi_ice = { summon:true, pelem:'ice', chain:['p1','p2'], name:'Mini Golem', color:'#9fe8ff', hp:1, spd:2.6, pow:.6, h:70, stats:[1,1,1], bio:'', sk:D9 };
 HEROES.gmi_fire = { summon:true, pelem:'fire', chain:['p1','p2'], name:'Magma Mini', color:'#ffb43a', hp:1, spd:2.6, pow:.6, h:70, stats:[1,1,1], bio:'', sk:D9 };
@@ -2641,7 +2641,7 @@ const petStage = lv => lv >= 50 ? 5 : lv >= 40 ? 4 : lv >= 30 ? 3 : lv >= 20 ? 2
 const petPicksAvail = lv => { let n = 0; for (let L = 1; L <= lv; L++) if (L % 5 || L > 50) n++; return n; };
 const petPending = P => Math.max(0, petPicksAvail(petLv(P)) - (P.hp + P.spd + P.atk));
 const petRevive = lv => 1800 - 300*[10,20,30,50].filter(L => lv >= L).length;
-function petStats(pid){ const P = petSave(pid), lv = petLv(P); return { lv, hp:Math.round(275*LVHP(lv)*(1 + .08*P.hp)), spd:1.8*LVSPD(lv)*(1 + .05*P.spd), pow:.53*LVPOW(lv)*(1 + .06*P.atk) }; }
+function petStats(pid){ const P = petSave(pid), lv = petLv(P); return { lv, hp:Math.round(138*LVHP(lv)*(1 + .08*P.hp)), spd:.9*LVSPD(lv)*(1 + .05*P.spd), pow:.26*LVPOW(lv)*(1 + .06*P.atk) }; }
 const petEl = m => PET_DEF[m.pid] ? PET_DEF[m.pid].el : 'ice';
 function petEligible(){ return G && !G.online && (G.story || G.mode === 'mission') && SAVE.pet && PET_DEF[SAVE.pet]; }
 function petSpawn(){
@@ -2684,7 +2684,7 @@ function petAI(u, out){
   const dx = o.x - u.x, adx = Math.abs(dx), dz = o.z - u.z, adz = Math.abs(dz); out.faceTo = dx > 0 ? 1 : -1;
   if ((u.skCd = (u.skCd || 0) - 1) <= 0 && (u.can() || (u.state === 'atk' && u.t >= 6))){
     const has = k => lv >= D.sk[k].lv, okk = k => has(k) && u.mp >= D.sk[k].cost; let c = null;
-    if (has('s') && !(u.shieldN > 0) && G.frame > (u.shieldCdF || 0) && u.mp >= D.sk.s.cost && (u.hp < u.maxhp*.85 || adx < 130)) c = 's';
+    if (has('s') && !(u.shieldN > 0) && G.frame > (u.shieldCdF || 0) && u.mp >= D.sk.s.cost && u.hp < u.maxhp*.7) c = 's';
     else if (okk('b') && adx < 420) c = 'b'; else if (okk('o') && adx < 340 && adz < 50) c = 'd'; else if (okk('u') && adx < 380) c = 'u'; else if (okk('f') && adx < 320 && adz < 26) c = 'f';
     if (c){ u.face = out.faceTo; out.sp = c; u.skCd = 45; return out; }
     u.skCd = 10;
