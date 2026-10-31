@@ -1,5 +1,6 @@
 <title>Storm Clash</title>
 <meta name="claude:viewport-fit-sides" content="cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@700;800;900&display=swap">
@@ -9,6 +10,10 @@
 html,body{height:100%;margin:0;background:#000;color:#fff7e8;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;overscroll-behavior:none}
 #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#000}
 #c{display:block;outline:none}
+#rot{position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:rgba(10,6,20,.92);font:900 20px 'Nunito',system-ui,sans-serif;color:#fff;text-align:center;padding:24px}
+#rot .ph{font-size:64px;animation:tilt 1.6s ease-in-out infinite}
+@keyframes tilt{0%,30%{transform:rotate(0)}60%,100%{transform:rotate(-90deg)}}
+#rot button{font:900 15px 'Nunito',system-ui,sans-serif;color:#fff;background:#2a6a9a;border:2px solid #fff8;border-radius:14px;padding:10px 18px}
 [hidden]{display:none!important}
 #touch{position:fixed;inset:0;pointer-events:none}
 .ctl{opacity:var(--op);transition:opacity .12s}
@@ -56,6 +61,7 @@ html,body{height:100%;margin:0;background:#000;color:#fff7e8;overflow:hidden;tou
 </style>
 
 <div id="wrap"><canvas id="c" width="960" height="540" tabindex="0" aria-label="Storm Clash game screen"></canvas></div>
+<div id="rot" hidden><div class="ph">📱</div><div>Turn your phone sideways to play</div><div style="font:700 14px Nunito,system-ui,sans-serif;opacity:.8">Storm Clash is made for landscape.</div><button id="rotOk">Play like this anyway</button></div>
 <div id="touch" hidden>
   <div id="stick" class="ctl" data-id="stick"><div id="knob"></div></div>
   <div id="cmd" class="ctl" data-id="cmd">⚑ Command: Attack</div>
@@ -113,9 +119,15 @@ if (!SAVE.storyV3){ SAVE.storyV3 = true; const OLDPOS = [0,2,4,6,8,10,12,14,17,1
 if (!SAVE.deck){ SAVE.deck = {'atk:0':1, 'hp:0':1, 'gauge:0':1, 'crit:1':1}; } if (!SAVE.equip) SAVE.equip = [null, null, null];
 function persist(){ try { localStorage.setItem('stormclash3', JSON.stringify(SAVE)); } catch(e){} }
 
+let VPKEY = '', ROT_OK = false;
+function viewport(){ const de = document.documentElement, v = window.visualViewport; let aw = innerWidth || de.clientWidth, ah = innerHeight || de.clientHeight;
+  if (v && v.scale && Math.abs(v.scale - 1) < .02 && v.width > 50 && v.height > 50){ aw = Math.round(v.width); ah = Math.round(v.height); }
+  return [Math.max(200, aw), Math.max(150, ah)]; }
 function resize(){
-  const aw = innerWidth, ah = innerHeight;
-  W = Math.max(820, Math.min(1400, Math.round(H * aw / ah)));
+  const [aw, ah] = viewport(); VPKEY = aw + 'x' + ah;
+  if (window.scrollX || window.scrollY) window.scrollTo(0, 0);
+  { const r = document.getElementById('rot'); if (r) r.hidden = !(isTouch && ah > aw*1.1 && !ROT_OK); }
+  W = Math.max(960, Math.min(1400, Math.round(H * aw / ah)));
   const s = Math.min(aw / W, ah / H);
   cv.style.width = Math.round(W*s) + 'px'; cv.style.height = Math.round(H*s) + 'px';
   const gfx = (SAVE.ui && SAVE.ui.gfx) || 'auto'; if (gfx === 'low') LOWFX = true; else if (gfx === 'high') LOWFX = false;
@@ -2622,7 +2634,15 @@ function toggleFullscreen(){
   setTimeout(() => { $('fsBtn').textContent = (d.fullscreenElement || d.webkitFullscreenElement) ? 'Exit full screen' : 'Full screen'; }, 300);
 }
 addEventListener('resize', resize);
-document.addEventListener('fullscreenchange', resize);
+document.addEventListener('fullscreenchange', resize); document.addEventListener('webkitfullscreenchange', resize);
+/* phones report the old size for a moment after turning: measure again a few times, and keep checking in the main loop */
+const resizeSoon = () => { resize(); for (const t of [80, 250, 500, 900, 1500]) setTimeout(resize, t); };
+addEventListener('orientationchange', resizeSoon); if (screen.orientation && screen.orientation.addEventListener) screen.orientation.addEventListener('change', resizeSoon);
+if (window.visualViewport) visualViewport.addEventListener('resize', () => { const [aw, ah] = viewport(); if (aw + 'x' + ah !== VPKEY) resize(); });
+addEventListener('pageshow', resizeSoon); document.addEventListener('visibilitychange', () => { if (!document.hidden) resizeSoon(); });
+setInterval(() => { const [aw, ah] = viewport(); if (aw + 'x' + ah !== VPKEY) resize(); }, 400);
+document.addEventListener('gesturestart', e => e.preventDefault(), {passive:false}); document.addEventListener('dblclick', e => e.preventDefault(), {passive:false});
+$('rotOk').addEventListener('click', () => { ROT_OK = true; resize(); });
 
 const ICONS = {
   hook:'<path d="M11 2h2v9a5 5 0 11-8 4h2a3 3 0 106-2z"/>',
@@ -2837,7 +2857,7 @@ function petGainXp(won){
 }
 /* pet HUD (top of the screen) */
 function drawPetHUD(){
-  const u = G.pet; if (!u) return; const D = PET_DEF[u.pid], lv = u.petLv, x = W/2 - 150, y = 92, w = 300;
+  const u = G.pet; if (!u) return; const D = PET_DEF[u.pid], lv = u.petLv, x = W/2 - 150, y = isTouch && G.player && (G.mode === 'versus' || G.mode === 'team') ? 130 : 92, w = 300;
   ctx.save(); ctx.fillStyle = 'rgba(10,20,40,.62)'; ctx.strokeStyle = D.col; ctx.lineWidth = 2; ctx.beginPath(); ctx.roundRect(x, y, w, 44, 10); ctx.fill(); ctx.stroke();
   const pk = D.ids[petStage(lv, u.pid)] + '_idle', pm = META[pk]; ctx.save(); ctx.beginPath(); ctx.arc(x + 22, y + 22, 18, 0, 7); ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.fill(); ctx.clip(); if (pm && ok(IMG[pk])){ let hh = 40, ww = hh*pm.w/pm.h; if (ww > 40){ hh *= 40/ww; ww = 40; } ctx.drawImage(IMG[pk], x + 22 - ww/2, y + 22 - hh/2, ww, hh); } ctx.restore();
   ctx.textAlign = 'left'; ctx.font = '900 11px ' + UIF; ctx.fillStyle = '#fff'; ctx.fillText(`${D.name}  Lv ${lv}`, x + 44, y + 13);
@@ -3773,7 +3793,7 @@ function drawHUD(){
   }
   const p = G.player;
   if (p){
-    const px = isTouch ? W/2 - 110 : 10, py = isTouch ? (G.mode === 'battle' ? 34 : 8) : H - 54;
+    const px = isTouch ? W/2 - 110 : 10, py = isTouch ? (G.mode === 'battle' ? 34 : (G.mode === 'versus' || G.mode === 'team') ? 80 : 8) : H - 54;
     ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.beginPath(); ctx.roundRect(px, py, 220, 44, 10); ctx.fill();
     const key = p.id + '_idle', im = IMG[key], m = META[key];
     if (ok(im)){ ctx.save(); ctx.beginPath(); ctx.arc(px+22, py+22, 18, 0, 7); ctx.clip(); ctx.fillStyle = '#e9d3a3'; ctx.fill(); const iw = im.naturalWidth, ih = im.naturalHeight, side = Math.min(iw, ih*.42), cx0 = Math.max(0, Math.min(iw - side, iw*m.ax - side/2 + iw*.06)); ctx.drawImage(im, cx0, 0, side, side, px+4, py+4, 36, 36); ctx.restore(); }
