@@ -9,7 +9,7 @@
 :root{ --op:.45; --bs:1; color-scheme:dark; }
 html,body{height:100%;margin:0;background:#000;color:#fff7e8;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;overscroll-behavior:none}
 #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#000}
-#c{display:block;outline:none}
+#c{display:block;outline:none;width:100%;height:100%;object-fit:contain}
 #rot{position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:rgba(10,6,20,.92);font:900 20px 'Nunito',system-ui,sans-serif;color:#fff;text-align:center;padding:24px}
 #rot .ph{font-size:64px;animation:tilt 1.6s ease-in-out infinite}
 @keyframes tilt{0%,30%{transform:rotate(0)}60%,100%{transform:rotate(-90deg)}}
@@ -120,8 +120,9 @@ if (!SAVE.deck){ SAVE.deck = {'atk:0':1, 'hp:0':1, 'gauge:0':1, 'crit:1':1}; } i
 function persist(){ try { localStorage.setItem('stormclash3', JSON.stringify(SAVE)); } catch(e){} }
 
 let VPKEY = '', ROT_OK = false;
-function viewport(){ const de = document.documentElement, v = window.visualViewport; let aw = innerWidth || de.clientWidth, ah = innerHeight || de.clientHeight;
-  if (v && v.scale && Math.abs(v.scale - 1) < .02 && v.width > 50 && v.height > 50){ aw = Math.round(v.width); ah = Math.round(v.height); }
+/* the size of the box the game sits in, measured by the browser's own layout (stays right inside apps and after the phone turns) */
+function viewport(){ const wr = document.getElementById('wrap'); let aw = wr ? wr.clientWidth : 0, ah = wr ? wr.clientHeight : 0;
+  if (!(aw > 50 && ah > 50)){ const de = document.documentElement; aw = innerWidth || de.clientWidth; ah = innerHeight || de.clientHeight; }
   return [Math.max(200, aw), Math.max(150, ah)]; }
 function resize(){
   const [aw, ah] = viewport(); VPKEY = aw + 'x' + ah;
@@ -129,7 +130,6 @@ function resize(){
   { const r = document.getElementById('rot'); if (r) r.hidden = !(isTouch && ah > aw*1.1 && !ROT_OK); }
   W = Math.max(960, Math.min(1400, Math.round(H * aw / ah)));
   const s = Math.min(aw / W, ah / H);
-  cv.style.width = Math.round(W*s) + 'px'; cv.style.height = Math.round(H*s) + 'px';
   const gfx = (SAVE.ui && SAVE.ui.gfx) || 'auto'; if (gfx === 'low') LOWFX = true; else if (gfx === 'high') LOWFX = false;
   const dpr = LOWFX ? 1 : Math.min(window.devicePixelRatio || 1, 2);
   cv.width = Math.round(W*s*dpr); cv.height = Math.round(H*s*dpr);
@@ -2640,7 +2640,8 @@ const resizeSoon = () => { resize(); for (const t of [80, 250, 500, 900, 1500]) 
 addEventListener('orientationchange', resizeSoon); if (screen.orientation && screen.orientation.addEventListener) screen.orientation.addEventListener('change', resizeSoon);
 if (window.visualViewport) visualViewport.addEventListener('resize', () => { const [aw, ah] = viewport(); if (aw + 'x' + ah !== VPKEY) resize(); });
 addEventListener('pageshow', resizeSoon); document.addEventListener('visibilitychange', () => { if (!document.hidden) resizeSoon(); });
-setInterval(() => { const [aw, ah] = viewport(); if (aw + 'x' + ah !== VPKEY) resize(); }, 400);
+setInterval(() => { const [aw, ah] = viewport(); if (aw + 'x' + ah !== VPKEY) resize(); }, 300);
+if (window.ResizeObserver) new ResizeObserver(() => { const [aw, ah] = viewport(); if (aw + 'x' + ah !== VPKEY) resize(); }).observe(document.getElementById('wrap'));
 document.addEventListener('gesturestart', e => e.preventDefault(), {passive:false}); document.addEventListener('dblclick', e => e.preventDefault(), {passive:false});
 $('rotOk').addEventListener('click', () => { ROT_OK = true; resize(); });
 
@@ -4256,7 +4257,7 @@ function menuKeys(){
 cv.addEventListener('pointerdown', e => {
   audio();
   if (!$('settings').hidden || editing) return;
-  const r = cv.getBoundingClientRect(), x = (e.clientX - r.left)/r.width*W, y = (e.clientY - r.top)/r.height*H;
+  const r = cv.getBoundingClientRect(), k = Math.min(r.width/W, r.height/H), x = (e.clientX - r.left - (r.width - W*k)/2)/k, y = (e.clientY - r.top - (r.height - H*k)/2)/k;
   for (let i = hot.length-1; i >= 0; i--){ const h = hot[i]; if (x>=h.x && x<=h.x+h.w && y>=h.y && y<=h.y+h.h){ h.act(); break; } }
 });
 
