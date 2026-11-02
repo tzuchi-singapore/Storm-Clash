@@ -2401,6 +2401,7 @@ function drawUnit(u){
   const t = G.frame + (u.seed||0);
   const sh = Math.max(.4, 1 + u.y/220), big = u.kind === 'rider' || u.kind === 'mount' || u.riding;
   ctx.fillStyle = 'rgba(30,15,5,.35)'; ctx.beginPath(); ctx.ellipse(gx, gy, (big?56:24)*sh, 7*sh, 0, 0, 7); ctx.fill();
+  if (u.wild && (u.skyT > 0 || u.glowT > 0)) drawWildGlow(u, gx, gy);
   if (u.pet) petUnderlay(u, gx, gy);
   if (u.state === 'sp' && u.sp && u.sp.horse){ const hk = {horse_guan:'hfx_guan', horse_lubu:'hfx_lubu', horse_liu:'hfx_liu'}[u.sp.horse], M = BDR[hk], im = IMG[hk];
     if (M && ok(im)){ const fi = Math.floor(u.t/2) % M.n, sx = (fi % M.cols)*M.w, sy0 = Math.floor(fi/M.cols)*M.h, H2 = u.h*1.6, W2 = H2*M.w/M.h; ctx.save(); ctx.translate(gx, gy + u.y); if (u.face < 0) ctx.scale(-1, 1); if (u.flash) ctx.globalAlpha = .75; ctx.drawImage(im, sx, sy0, M.w, M.h, -W2*.5, -H2 + 8, W2, H2); ctx.restore(); return; } }
@@ -2940,21 +2941,52 @@ function foePetSpawn(){
 /* tame stage: on the last wave a wild pet appears and evolves each time it is beaten, up to its final form */
 function wildPetSpawn(pid, st, x, z){
   const D = PET_DEF[pid], lv = D.lvs[st], base = petStatsLv(lv), ch = G.story ? G.story.ch : 0, pw = petStatsLv(Math.min(lv, 12 + ch*9));
-  const u = petMake(pid, {lv, hp:Math.round(base.hp*(1.8 + st*.3)), spd:base.spd, pow:pw.pow*(1.1 + st*.06)}, 1, null, x, z);
-  u.wild = true; u.face = -1; u.inv = 70; G.wild.u = u; G.wild.st = st;
-  smoke(u.x, u.z, 14); ring(u.x, sy(u) - u.h*.5, D.col); ring(u.x, sy(u) - u.h*.5, '#ffffff'); shake = Math.max(shake, st ? 8 : 4); flashScreen(D.col); SFX.roar();
-  floatText(u, st ? 'EVOLVED!' : 'Wild!', D.col);
+  const u = petMake(pid, {lv, hp:Math.round(base.hp*(1.8 + st*.3))*2, spd:base.spd, pow:pw.pow*(1.1 + st*.06)*2}, 1, null, x, z);
+  u.wild = true; u.face = -1; u.inv = 0; u.skyT = WILD_FALL; u.skyH = 520 + u.h; u.y = -u.skyH; u.vx = u.vy = 0; u.invT = WILD_FALL + 30; u.glowT = 150; G.wild.u = u; G.wild.st = st; G.wild.beam = 0;
+  flashScreen(D.col);
   addMsg(st ? `The wild pet evolves into <e>${D.stages[st]}</e>! (form ${st+1}/${D.ids.length})` : `A wild <e>${D.stages[0]}</e> appears! Beat every evolution to tame it. (form 1/${D.ids.length})`);
   return u;
 }
+const WILD_FALL = 42;
+/* the wild pet falls from the sky in a pillar of light and lands with a shockwave */
+function wildPetFall(u){
+  const D = PET_DEF[u.pid], st = G.wild ? G.wild.st : 0, k = --u.skyT / WILD_FALL;
+  u.y = -u.skyH * k*k; u.vx = u.vy = 0; u.x = G.wild.x != null ? G.wild.x : u.x; if (u.state !== 'idle') u.set('idle');
+  if (G.frame % 2 === 0) particles.push({x:u.x + rnd(-u.h*.3, u.h*.3), y:sy(u) - rnd(0, u.h), vx:0, vy:-rnd(2,5), life:18, max:18, col:Math.random() < .5 ? D.col : '#ffffff', kind:'spark'});
+  if (u.skyT > 0) return;
+  u.y = 0; u.glowT = 150; shake = Math.max(shake, st ? 12 : 8); flashScreen(D.col); SFX.roar();
+  smoke(u.x, u.z, 16); ring(u.x, sy(u) - 10, D.col); ring(u.x, sy(u) - u.h*.5, '#ffffff'); ring(u.x, sy(u) - u.h, D.col);
+  for (let i=0;i<36;i++){ const a = i/36*Math.PI*2; particles.push({x:u.x + Math.cos(a)*20, y:sy(u) - 8, vx:Math.cos(a)*rnd(3,7), vy:-rnd(.5,2.5), life:28, max:28, col:i%2 ? D.col : '#ffffff', kind:'spark'}); }
+  floatText(u, st ? 'EVOLVED!' : 'Wild!', D.col);
+  addMsg(st ? `The wild pet evolves into <e>${D.stages[st]}</e>! (form ${st+1}/${D.ids.length})` : `A wild <e>${D.stages[0]}</e> appears! Beat every evolution to tame it. (form 1/${D.ids.length})`);
+}
+function drawWildGlow(u, gx, gy){
+  const D = PET_DEF[u.pid]; if (!D) return; const falling = u.skyT > 0, a = falling ? 1 : Math.min(1, u.glowT/60), cy = gy + u.y - u.h*.5, pulse = .75 + .25*Math.sin(G.frame*.3);
+  ctx.save(); ctx.globalCompositeOperation = 'lighter';
+  if (falling || u.glowT > 90){ const bw = u.h*(falling ? .55 : .55*(u.glowT - 90)/60), g0 = ctx.createLinearGradient(gx - bw, 0, gx + bw, 0);
+    g0.addColorStop(0, 'rgba(0,0,0,0)'); g0.addColorStop(.5, D.col); g0.addColorStop(1, 'rgba(0,0,0,0)'); ctx.globalAlpha = .45*a*pulse; ctx.fillStyle = g0; ctx.fillRect(gx - bw, -2000, bw*2, gy + 2000);
+    ctx.globalAlpha = .55*a*pulse; ctx.fillStyle = '#ffffff'; ctx.fillRect(gx - bw*.12, -2000, bw*.24, gy + 2000); }
+  if (falling){ const k = 1 - u.skyT/WILD_FALL; ctx.globalAlpha = .4 + .5*k; ctx.strokeStyle = D.col; ctx.lineWidth = 4; ctx.beginPath(); ctx.ellipse(gx, gy, u.h*(.9 - .4*k), u.h*(.25 - .11*k), 0, 0, 7); ctx.stroke(); }
+  const g = ctx.createRadialGradient(gx, cy, 6, gx, cy, u.h*1.05); g.addColorStop(0, '#ffffff'); g.addColorStop(.3, D.col); g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.globalAlpha = (falling ? .7 : .55)*a*pulse; ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(gx, cy, u.h*.8, u.h*.95, 0, 0, 7); ctx.fill();
+  ctx.restore();
+}
+/* while the next form is coming, a beam of light shines down where it will land */
+function drawWildBeam(){
+  const W = G.wild; if (!W || W.done || !(W.next > 0)) return; const D = PET_DEF[W.pid], gx = W.x - G.cam, gy = G.st.FT + W.z, k = 1 - W.next/WILD_WAIT, bw = 20 + 60*k, pulse = .7 + .3*Math.sin(G.frame*.35);
+  ctx.save(); ctx.globalCompositeOperation = 'lighter'; const g = ctx.createLinearGradient(gx - bw, 0, gx + bw, 0); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(.5, D.col); g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.globalAlpha = (.15 + .4*k)*pulse; ctx.fillStyle = g; ctx.fillRect(gx - bw, -2000, bw*2, gy + 2000);
+  ctx.globalAlpha = (.3 + .5*k)*pulse; ctx.strokeStyle = D.col; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(gx, gy, 40 + 50*k, 11 + 13*k, 0, 0, 7); ctx.stroke(); ctx.restore();
+}
+const WILD_WAIT = 50;
 function wildPetDown(u){
   const W = G.wild; if (!W) return; const D = PET_DEF[W.pid];
   if (W.st >= D.ids.length - 1){ W.done = true; addMsg(`The <a>${D.stages[W.st]}</a> bows to you. It is ready to be tamed!`); SFX.heal(); return; }
-  W.next = 70; W.x = Math.max(G.bounds.l + 80, Math.min(G.bounds.r - 80, u.x)); W.z = u.z;
+  W.next = WILD_WAIT; W.x = Math.max(G.bounds.l + 80, Math.min(G.bounds.r - 80, u.x)); W.z = u.z;
 }
 function wildPetTick(){
   const W = G.wild; if (!W || W.done) return;
-  if (W.next > 0){ if (W.next % 14 === 0) for (let i=0;i<10;i++) particles.push({x:W.x + rnd(-30,30), y:G.st.FT + W.z - rnd(0,60), vx:0, vy:-rnd(1,3), life:24, max:24, col:PET_DEF[W.pid].col, kind:'spark'});
+  if (W.next > 0){ if (W.next % 3 === 0) particles.push({x:W.x + rnd(-40,40), y:G.st.FT + W.z - rnd(150,500), vx:0, vy:rnd(6,10), life:30, max:30, col:Math.random() < .5 ? PET_DEF[W.pid].col : '#ffffff', kind:'spark'});
     if (--W.next === 0) wildPetSpawn(W.pid, W.st + 1, W.x, W.z); }
 }
 function petTick(){
@@ -2968,7 +3000,7 @@ function petTick1(u){
   if (!G.units.includes(u)) G.units.push(u);
   const D = PET_DEF[u.pid], lv = u.petLv;
   let pl;
-  if (u.wild) pl = null;
+  if (u.wild){ pl = null; if (u.skyT > 0){ wildPetFall(u); return; } if (u.glowT > 0) u.glowT--; }
   else if (u.foePet){ pl = u.master; if (!pl || pl.dead || pl.hp <= 0 || !G.units.includes(pl)){ u.gone = true; for (const v of G.units) if (v.master === u && !v.dead) vanish(v); vanish(u); return; } }
   else { pl = G.player && G.player.alive() && !G.player.summon ? G.player : G.units.find(v => v.team === 0 && v.kind === 'hero' && !v.summon && v.alive()); if (pl) u.master = pl; }
   if (u.down){ u.deadT = 0; u.hp = 0; u.burn = u.poison = 0;
@@ -3337,7 +3369,7 @@ function spawnWave(){
   }
   const tm = G.story && STORY[G.story.ch] && STORY[G.story.ch].steps[G.story.i] && STORY[G.story.ch].steps[G.story.i].tame;
   if (tm && PET_DEF[tm] && !G.wild && G.zone === G.M.zones.length - 1 && G.wave === G.M.zones[G.zone].length - 1){
-    if (!G.pets) G.pets = []; G.wild = { pid:tm, st:0 }; wildPetSpawn(tm, 0, Math.min(G.bounds.r - 120, G.cam + viewW - 140), ZMAX()*.5); }
+    if (!G.pets) G.pets = []; G.wild = { pid:tm, st:0, x:Math.min(G.bounds.r - 120, G.cam + viewW - 140) }; wildPetSpawn(tm, 0, Math.min(G.bounds.r - 120, G.cam + viewW - 140), ZMAX()*.5); }
 }
 function addMsg(html){ G.msg.push({txt:html, t:240}); if (G.msg.length > 3) G.msg.shift(); }
 function cycleCommand(){ if (!G) return; G.command = G.command === 'attack' ? 'follow' : 'attack'; updateCmdLabel(); SFX.menu(); }
@@ -3951,6 +3983,7 @@ function drawFight(){
   if (G.mode === 'hold') drawHoldWorld();
   drawItems();
   const ents = [...G.units.map(u => ({z:u.kind === 'fort' ? -100 : u.z, d:() => drawUnit(u)})), ...fx.map(p => ({z:p.z+.1, d:() => drawFx(p)}))].sort((a,b) => a.z - b.z);
+  drawWildBeam();
   for (const e of ents) e.d();
   for (const u of G.units) drawBars(u);
   drawParticles();
