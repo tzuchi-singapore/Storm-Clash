@@ -3031,11 +3031,17 @@ function drawPetHUD(){
   ctx.restore();
 }
 function drawSummonHUD(){
-  const P = G.player; if (!P) return; const u = G.units.find(v => v.master === P && v.heroSummon && !v.dead && v.hp > 0); if (!u) return;
-  const w = 300, x = W/2 - 150, y = (isTouch && (G.mode === 'versus' || G.mode === 'team') ? 130 : 92) + (G.pet ? 50 : 0), col = u.color || '#ff2a3a';
-  ctx.save(); ctx.fillStyle = 'rgba(40,6,10,.66)'; ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.beginPath(); ctx.roundRect(x, y, w, 44, 10); ctx.fill(); ctx.stroke();
+  const P = G.player; if (!P) return; const y0 = isTouch && (G.mode === 'versus' || G.mode === 'team') ? 130 : 92;
+  for (const u of G.units){ if (!u.heroSummon || u.dead || !(u.hp > 0) || !u.master) continue;
+    if (u.master === P) drawSummonPanel(u, W/2 - 150, y0 + (G.pet ? 50 : 0), 'Demon ' + u.name, false);
+    else if (u.master.team !== P.team) drawSummonPanel(u, W - 300 - 16, y0 - 34, 'Enemy · Demon ' + u.name, true);
+    else drawSummonPanel(u, 16, y0 - 34, 'Ally · Demon ' + u.name, false); }
+}
+function drawSummonPanel(u, x, y, label, foe){
+  const w = 300, col = u.color || '#ff2a3a';
+  ctx.save(); ctx.fillStyle = foe ? 'rgba(60,0,8,.72)' : 'rgba(40,6,10,.66)'; ctx.strokeStyle = foe ? '#ff5a5a' : col; ctx.lineWidth = 2; ctx.beginPath(); ctx.roundRect(x, y, w, 44, 10); ctx.fill(); ctx.stroke();
   const pk = u.id + '_idle', pm = META[pk]; ctx.save(); ctx.beginPath(); ctx.arc(x + 22, y + 22, 18, 0, 7); ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.fill(); ctx.clip(); if (pm && ok(IMG[pk])){ let hh = 40, ww = hh*pm.w/pm.h; if (ww > 40){ hh *= 40/ww; ww = 40; } ctx.drawImage(IMG[pk], x + 22 - ww/2, y + 22 - hh/2 + 4, ww, hh); } ctx.restore();
-  ctx.textAlign = 'left'; ctx.font = '900 11px ' + UIF; ctx.fillStyle = '#fff'; ctx.fillText('Demon ' + u.name, x + 44, y + 13);
+  ctx.textAlign = 'left'; ctx.font = '900 11px ' + UIF; ctx.fillStyle = '#fff'; ctx.fillText(label, x + 44, y + 13);
   const bw = 170; ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(x + 44, y + 18, bw, 8); ctx.fillRect(x + 44, y + 30, bw, 5);
   ctx.fillStyle = '#ff5a5a'; ctx.fillRect(x + 44, y + 18, bw*Math.max(0, u.hp)/u.maxhp, 8); ctx.fillStyle = '#3d8bff'; ctx.fillRect(x + 44, y + 30, bw*Math.min(300, u.mp)/300, 5);
   ctx.font = '900 9px ' + UIF; ctx.fillStyle = '#fff'; ctx.fillText(Math.max(0, Math.ceil(u.hp)) + ' / ' + u.maxhp, x + 48, y + 25.5);
