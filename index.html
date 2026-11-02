@@ -4094,9 +4094,30 @@ function heroSprite(id, frame, cx, by, idleH, glow){ let m = META[id+'_'+frame];
 function menuStart(dim){ menuT++; G = null; drawStage(); ctx.fillStyle = `rgba(20,10,0,${dim})`; ctx.fillRect(0,0,W,H); ctx.save(); ctx.translate(MX, 0); HOTX = MX; }
 function menuEnd(){ ctx.restore(); HOTX = 0; }
 function gear(){ btn(960 + MX - 58, H - 52, 46, 40, '⚙', false, openSettings, true, '#5a6a7a'); }
+const TITLE_GOOD = [['zara','sci','ayu','taoist','mira','bella','monk','lux'], ['hong','mei','ninja','samurai','yao','xian','knight'], ['rajan','kael','kai','rio','liu','guan']];
+const TITLE_BAD = [['curse','madsci','queen'], ['brute','pharaoh','lubu'], ['bone','vraxx','lord','qin']];
+function drawTitleLineup(){
+  const gy = 470, t = menuT;
+  // team auras
+  let g = ctx.createRadialGradient(250, gy - 40, 20, 250, gy - 40, 330); g.addColorStop(0, 'rgba(90,170,255,.38)'); g.addColorStop(1, 'rgba(90,170,255,0)'); ctx.fillStyle = g; ctx.fillRect(-200, 0, 1360, 560);
+  g = ctx.createRadialGradient(730, gy - 40, 20, 730, gy - 40, 300); g.addColorStop(0, 'rgba(255,50,40,.42)'); g.addColorStop(1, 'rgba(255,50,40,0)'); ctx.fillStyle = g; ctx.fillRect(-200, 0, 1360, 560);
+  // centre clash bolt
+  ctx.save(); ctx.globalAlpha = .55 + .35*Math.sin(t*.15); ctx.strokeStyle = '#fff6c8'; ctx.lineWidth = 3; ctx.shadowColor = '#ffd84a'; ctx.shadowBlur = 18; ctx.beginPath();
+  let x = 486, y = 300; ctx.moveTo(x, y); for (let i = 0; i < 9; i++){ x = 486 + ((i*37 + (t>>2)*13) % 26) - 13; y += 26; ctx.lineTo(x, y); } ctx.stroke(); ctx.restore();
+  const rows = [{y: gy - 34, h: 84, s: .72}, {y: gy - 14, h: 98, s: .86}, {y: gy + 14, h: 116, s: 1}];
+  rows.forEach((r, ri) => {
+    const good = TITLE_GOOD[ri], bad = TITLE_BAD[ri];
+    const gl = 20 - MX*.75 + ri*22, gr = 448 - ri*4, gstep = (gr - gl) / Math.max(1, good.length - 1);
+    good.forEach((id, i) => { const cx = gl + i*gstep, by = r.y + Math.sin(t*.05 + i + ri)*2.5; heroSprite(id, 'idle', cx, by, r.h, false); });
+    const bh = r.h * 1.1, bl = 548 - ri*4, br = 930 + MX*.4 - ri*30, bstep = (br - bl) / Math.max(1, bad.length - 1);
+    bad.forEach((id, i) => { const cx = bl + i*bstep, by = r.y + Math.sin(t*.05 + i*1.3 + ri)*2.5; ctx.save(); ctx.translate(cx, 0); ctx.scale(-1, 1); heroSprite(id, 'idle', 0, by, id === 'lubu' ? bh*1.1 : bh, false); ctx.restore(); });
+  });
+  ctx.textAlign = 'center'; ctx.font = '900 15px ' + UIF; ctx.lineWidth = 4; ctx.strokeStyle = '#08142a'; ctx.strokeText('HEROES', 238, 336); ctx.fillStyle = '#9fd4ff'; ctx.fillText('HEROES', 238, 336);
+  ctx.strokeStyle = '#2a0505'; ctx.strokeText('VILLAINS', 735, 336); ctx.fillStyle = '#ff8a7a'; ctx.fillText('VILLAINS', 735, 336);
+}
 function drawTitle(){
   menuStart(.3);
-  HERO_IDS.forEach((id, i) => heroSprite(id, i % 2 ? 'win' : 'idle', 480 - (HERO_IDS.length-1)*Math.min(78, 900/(HERO_IDS.length-1))/2 + i*Math.min(78, 900/(HERO_IDS.length-1)), 492 + Math.sin(menuT*.05+i)*3, i % 2 ? 104 : 112));
+  drawTitleLineup();
   ctx.textAlign = 'center';
   ctx.font = '96px ' + DISP; ctx.lineWidth = 12; ctx.strokeStyle = '#2a0b04'; ctx.strokeText('STORM CLASH', 480, 128);
   const g = ctx.createLinearGradient(0, 50, 0, 128); g.addColorStop(0, '#fff6c8'); g.addColorStop(.6, '#ffc23a'); g.addColorStop(1, '#ff7a1a');
