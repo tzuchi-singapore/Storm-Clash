@@ -2937,23 +2937,45 @@ function foePetSpawn(){
   const lv = foePetLv(), u = petMake(pid, petStatsLv(lv), 1, h, h.x + h.face*-60, h.z);
   smoke(u.x, u.z, 10); addMsg(`<e>${h.name}</e> calls a <e>Lv ${lv} ${PET_DEF[pid].stages[petStage(lv, pid)]}</e>!`);
 }
+/* tame stage: on the last wave a wild pet appears and evolves each time it is beaten, up to its final form */
+function wildPetSpawn(pid, st, x, z){
+  const D = PET_DEF[pid], lv = D.lvs[st], base = petStatsLv(lv), ch = G.story ? G.story.ch : 0, pw = petStatsLv(Math.min(lv, 12 + ch*9));
+  const u = petMake(pid, {lv, hp:Math.round(base.hp*(1.8 + st*.3)), spd:base.spd, pow:pw.pow*(1.1 + st*.06)}, 1, null, x, z);
+  u.wild = true; u.face = -1; u.inv = 70; G.wild.u = u; G.wild.st = st;
+  smoke(u.x, u.z, 14); ring(u.x, sy(u) - u.h*.5, D.col); ring(u.x, sy(u) - u.h*.5, '#ffffff'); shake = Math.max(shake, st ? 8 : 4); flashScreen(D.col); SFX.roar();
+  floatText(u, st ? 'EVOLVED!' : 'Wild!', D.col);
+  addMsg(st ? `The wild pet evolves into <e>${D.stages[st]}</e>! (form ${st+1}/${D.ids.length})` : `A wild <e>${D.stages[0]}</e> appears! Beat every evolution to tame it. (form 1/${D.ids.length})`);
+  return u;
+}
+function wildPetDown(u){
+  const W = G.wild; if (!W) return; const D = PET_DEF[W.pid];
+  if (W.st >= D.ids.length - 1){ W.done = true; addMsg(`The <a>${D.stages[W.st]}</a> bows to you. It is ready to be tamed!`); SFX.heal(); return; }
+  W.next = 70; W.x = Math.max(G.bounds.l + 80, Math.min(G.bounds.r - 80, u.x)); W.z = u.z;
+}
+function wildPetTick(){
+  const W = G.wild; if (!W || W.done) return;
+  if (W.next > 0){ if (W.next % 14 === 0) for (let i=0;i<10;i++) particles.push({x:W.x + rnd(-30,30), y:G.st.FT + W.z - rnd(0,60), vx:0, vy:-rnd(1,3), life:24, max:24, col:PET_DEF[W.pid].col, kind:'spark'});
+    if (--W.next === 0) wildPetSpawn(W.pid, W.st + 1, W.x, W.z); }
+}
 function petTick(){
   if (!G.pets) G.pets = [];
   if (!G.petInit){ G.petInit = true; if (petEligible()) petSpawn(); }
   if (G.frame % 20 === 0) foePetSpawn();
+  wildPetTick();
   for (const u of G.pets) if (!u.gone) petTick1(u);
 }
 function petTick1(u){
   if (!G.units.includes(u)) G.units.push(u);
   const D = PET_DEF[u.pid], lv = u.petLv;
   let pl;
-  if (u.foePet){ pl = u.master; if (!pl || pl.dead || pl.hp <= 0 || !G.units.includes(pl)){ u.gone = true; for (const v of G.units) if (v.master === u && !v.dead) vanish(v); vanish(u); return; } }
+  if (u.wild) pl = null;
+  else if (u.foePet){ pl = u.master; if (!pl || pl.dead || pl.hp <= 0 || !G.units.includes(pl)){ u.gone = true; for (const v of G.units) if (v.master === u && !v.dead) vanish(v); vanish(u); return; } }
   else { pl = G.player && G.player.alive() && !G.player.summon ? G.player : G.units.find(v => v.team === 0 && v.kind === 'hero' && !v.summon && v.alive()); if (pl) u.master = pl; }
   if (u.down){ u.deadT = 0; u.hp = 0; u.burn = u.poison = 0;
     if (--u.reviveT <= 0 && pl){ u.down = false; u.hp = u.maxhp; u.hpShow = u.hp; u.mp = 120; u.x = pl.x - pl.face*60; u.z = pl.z; u.y = 0; u.vx = u.vy = 0; u.set('getup'); u.inv = 90; ring(u.x, sy(u) - 50, D.col); for (let i=0;i<20;i++) particles.push({x:u.x + rnd(-30,30), y:sy(u) - rnd(0, u.h), vx:0, vy:-rnd(.5,2.5), life:30, max:30, col:D.col, kind:'spark'}); floatText(u, u.pid === 'phoenix' ? 'Reborn!' : 'Back!', D.col); SFX.heal(); }
     return; }
   if (u.hp <= 0){ for (const v of G.units) if (v.master === u && !v.dead) vanish(v);
-    if (u.foePet){ u.gone = true; if (u.state !== 'fall' && u.state !== 'lying'){ u.set('fall'); u.vy = -4; u.vx = -u.face*2; } vanish(u); return; }
+    if (u.foePet){ u.gone = true; if (u.state !== 'fall' && u.state !== 'lying'){ u.set('fall'); u.vy = -4; u.vx = -u.face*2; } vanish(u); if (u.wild) wildPetDown(u); return; }
     u.down = true; u.reviveT = petRevive(lv, u.pid); u.hp = 0; u.shieldN = 0; u.buffT2 = 0; if (u.state !== 'fall' && u.state !== 'lying'){ u.set('fall'); u.vy = -4; u.vx = -u.face*2; }
     addMsg(`<a>${D.name}</a> is down. Back in ${Math.ceil(u.reviveT/60)}s.`); return; }
   if (pl && Math.abs(pl.x - u.x) > 700 && u.can()){ smoke(u.x, u.z, 8); u.x = pl.x - pl.face*70; u.z = pl.z; smoke(u.x, u.z, 8); }
@@ -3036,8 +3058,9 @@ function drawSummonHUD(){
     if (u.master === P) drawSummonPanel(u, W/2 - 150, y0 + (G.pet ? 50 : 0), 'Demon ' + u.name, false);
     else if (u.master.team !== P.team) drawSummonPanel(u, W - 300 - 16, y0 - 34, 'Enemy · Demon ' + u.name, true);
     else drawSummonPanel(u, 16, y0 - 34, 'Ally · Demon ' + u.name, false); }
+  const Wp = G.wild; if (Wp && Wp.u && !Wp.u.gone && Wp.u.hp > 0){ const D = PET_DEF[Wp.pid]; drawSummonPanel(Wp.u, W - 300 - 16, y0 - 34, 'Wild ' + D.stages[Wp.st], true, (Wp.st + 1) + '/' + D.ids.length); }
 }
-function drawSummonPanel(u, x, y, label, foe){
+function drawSummonPanel(u, x, y, label, foe, badge){
   const w = 300, col = u.color || '#ff2a3a';
   ctx.save(); ctx.fillStyle = foe ? 'rgba(60,0,8,.72)' : 'rgba(40,6,10,.66)'; ctx.strokeStyle = foe ? '#ff5a5a' : col; ctx.lineWidth = 2; ctx.beginPath(); ctx.roundRect(x, y, w, 44, 10); ctx.fill(); ctx.stroke();
   const pk = u.id + '_idle', pm = META[pk]; ctx.save(); ctx.beginPath(); ctx.arc(x + 22, y + 22, 18, 0, 7); ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.fill(); ctx.clip(); if (pm && ok(IMG[pk])){ let hh = 40, ww = hh*pm.w/pm.h; if (ww > 40){ hh *= 40/ww; ww = 40; } ctx.drawImage(IMG[pk], x + 22 - ww/2, y + 22 - hh/2 + 4, ww, hh); } ctx.restore();
@@ -3045,10 +3068,10 @@ function drawSummonPanel(u, x, y, label, foe){
   const bw = 170; ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(x + 44, y + 18, bw, 8); ctx.fillRect(x + 44, y + 30, bw, 5);
   ctx.fillStyle = '#ff5a5a'; ctx.fillRect(x + 44, y + 18, bw*Math.max(0, u.hp)/u.maxhp, 8); ctx.fillStyle = '#3d8bff'; ctx.fillRect(x + 44, y + 30, bw*Math.min(300, u.mp)/300, 5);
   ctx.font = '900 9px ' + UIF; ctx.fillStyle = '#fff'; ctx.fillText(Math.max(0, Math.ceil(u.hp)) + ' / ' + u.maxhp, x + 48, y + 25.5);
-  const sec = Math.ceil((u.lifeT || 0)/60), fr = (u.lifeT || 0)/(u.lifeMax || 1200), cx = x + w - 30, cy = y + 22;
+  const sec = Math.ceil((u.lifeT || 0)/60), fr = badge ? 1 : (u.lifeT || 0)/(u.lifeMax || 1200), cx = x + w - 30, cy = y + 22;
   ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(255,255,255,.15)'; ctx.beginPath(); ctx.arc(cx, cy, 15, 0, 7); ctx.stroke();
-  ctx.strokeStyle = sec <= 5 ? '#ff5a5a' : '#ffd84a'; ctx.beginPath(); ctx.arc(cx, cy, 15, -Math.PI/2, -Math.PI/2 + Math.PI*2*fr); ctx.stroke();
-  ctx.textAlign = 'center'; ctx.font = '900 13px ' + UIF; ctx.fillStyle = sec <= 5 ? '#ff9a9a' : '#fff'; ctx.fillText(sec + 's', cx, cy + 4.5);
+  ctx.strokeStyle = !badge && sec <= 5 ? '#ff5a5a' : '#ffd84a'; ctx.beginPath(); ctx.arc(cx, cy, 15, -Math.PI/2, -Math.PI/2 + Math.PI*2*fr); ctx.stroke();
+  ctx.textAlign = 'center'; ctx.font = '900 13px ' + UIF; ctx.fillStyle = !badge && sec <= 5 ? '#ff9a9a' : '#fff'; if (badge) ctx.font = '900 11px ' + UIF; ctx.fillText(badge || sec + 's', cx, cy + 4);
   ctx.restore();
 }
 function petUnderlay(u, gx, gy){ if (u.down || u.gone || !u.pet || u.petLv < 15) return; ctx.save(); ctx.globalAlpha = (u.foePet ? .4 : .55) + .15*Math.sin(G.frame*.1); ctx.translate(gx, gy); ctx.scale(1, .3); ctx.rotate(G.frame*.02); vimg(PV(u, 'pcirc'), 0, 0, u.h*1.5, 0); ctx.restore(); }
@@ -3312,6 +3335,9 @@ function spawnWave(){
       G.units.push(u); ri++;
     }
   }
+  const tm = G.story && STORY[G.story.ch] && STORY[G.story.ch].steps[G.story.i] && STORY[G.story.ch].steps[G.story.i].tame;
+  if (tm && PET_DEF[tm] && !G.wild && G.zone === G.M.zones.length - 1 && G.wave === G.M.zones[G.zone].length - 1){
+    if (!G.pets) G.pets = []; G.wild = { pid:tm, st:0 }; wildPetSpawn(tm, 0, Math.min(G.bounds.r - 120, G.cam + viewW - 140), ZMAX()*.5); }
 }
 function addMsg(html){ G.msg.push({txt:html, t:240}); if (G.msg.length > 3) G.msg.shift(); }
 function cycleCommand(){ if (!G) return; G.command = G.command === 'attack' ? 'follow' : 'attack'; updateCmdLabel(); SFX.menu(); }
@@ -3432,7 +3458,7 @@ function heroBeaten(u){
 }
 function missionTick(){
   const p = G.player;
-  const enemiesLeft = G.units.some(u => u.team === 1 || u.charmTeam === 1);
+  const enemiesLeft = G.units.some(u => u.team === 1 || u.charmTeam === 1) || (G.wild && !G.wild.done);
   const heroesLeft = G.units.some(u => (u.team === 0 || u.charmTeam === 0) && u.kind === 'hero' && !u.summon) || G.backups.length > 0;
   if (G.phase === 'intro' && G.pt > 90){ G.phase = 'fight'; G.pt = 0; }
   else if (G.phase === 'fight'){
