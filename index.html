@@ -939,6 +939,7 @@ function nearMount(u){ return G.units.find(m => m.kind === 'mount' && !m.dead &&
 const ARMORED = u => !!((u.hero && u.hero.superArmor) || u.holdBoss);
 function applyHit(def, dir, a, src, hx, hy){
   if (!def.hittable()) return false;
+  if (def.wild){ def.wHits = (def.wHits || 0) + 1; if (a.shock || a.freeze) a = Object.assign({}, a, {shock:0, freeze:0}); }
   if (def.team === 1 && G && (G.mode === 'mission' || G.mode === 'battle')) def.entered = true;
   let dmg = a.dmg * (src ? src.pow : 1) * def.tough * (MUL[a.sk] || 1);
   hx = hx ?? def.x - dir*14; hy = hy ?? sy(def) - def.h*.55;
@@ -2954,7 +2955,7 @@ function wildPetFall(u){
   u.y = -u.skyH * k*k; u.vx = u.vy = 0; u.x = G.wild.x != null ? G.wild.x : u.x; if (u.state !== 'idle') u.set('idle');
   if (G.frame % 2 === 0) particles.push({x:u.x + rnd(-u.h*.3, u.h*.3), y:sy(u) - rnd(0, u.h), vx:0, vy:-rnd(2,5), life:18, max:18, col:Math.random() < .5 ? D.col : '#ffffff', kind:'spark'});
   if (u.skyT > 0) return;
-  u.y = 0; u.glowT = 150; shake = Math.max(shake, st ? 12 : 8); flashScreen(D.col); SFX.roar();
+  u.y = 0; u.glowT = 150; u.wArmor = 90; shake = Math.max(shake, st ? 12 : 8); flashScreen(D.col); SFX.roar(); wildShock(u, 9999, 26 + st*4);
   smoke(u.x, u.z, 16); ring(u.x, sy(u) - 10, D.col); ring(u.x, sy(u) - u.h*.5, '#ffffff'); ring(u.x, sy(u) - u.h, D.col);
   for (let i=0;i<36;i++){ const a = i/36*Math.PI*2; particles.push({x:u.x + Math.cos(a)*20, y:sy(u) - 8, vx:Math.cos(a)*rnd(3,7), vy:-rnd(.5,2.5), life:28, max:28, col:i%2 ? D.col : '#ffffff', kind:'spark'}); }
   floatText(u, st ? 'EVOLVED!' : 'Wild!', D.col);
@@ -2979,10 +2980,43 @@ function drawWildBeam(){
   ctx.globalAlpha = (.3 + .5*k)*pulse; ctx.strokeStyle = D.col; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(gx, gy, 40 + 50*k, 11 + 13*k, 0, 0, 7); ctx.stroke(); ctx.restore();
 }
 const WILD_WAIT = 50;
+function wildMidX(){ return Math.max(G.bounds.l + 120, Math.min(G.bounds.r - 120, G.cam + viewW*.5)); }
+/* shockwave from the wild pet: everyone in range is knocked down; its foes also take damage */
+function wildShock(u, r, dmg){
+  const D = PET_DEF[u.pid];
+  for (const v of G.units){
+    if (v === u || v.dead || !(v.hp > 0) || ['fort','barricade','tower'].includes(v.kind) || v.kind === 'mount' || v.id === 'kdragon') continue;
+    const dx = v.x - u.x; if (Math.abs(dx) > r || Math.abs(v.z - u.z) > r*.45) continue;
+    if (v.heldBy) releaseHeld(v.heldBy); if (v.grabbed) releaseHeld(v);
+    const dir = dx >= 0 ? 1 : -1, foe = v.team !== u.team;
+    applyHit(v, dir, {dmg:foe ? dmg : 0, kd:true, launch:-8, kb:7, unblock:true, heavy:true}, foe ? u : null, v.x - dir*10, sy(v) - v.h*.4);
+  }
+  for (let k=0;k<3;k++) ring(u.x, sy(u) - 8 - k*u.h*.35, k === 1 ? '#ffffff' : D.col);
+  for (let i=0;i<40;i++){ const a = i/40*Math.PI*2; particles.push({x:u.x + Math.cos(a)*24, y:sy(u) - 6 + Math.sin(a)*8, vx:Math.cos(a)*rnd(5,10), vy:Math.sin(a)*rnd(1,2.5) - .5, life:26, max:26, col:i%2 ? D.col : '#ffffff', kind:'spark'}); }
+  dust(u.x, u.z, 14); shake = Math.max(shake, 12); hitstop = Math.max(hitstop, 6); SFX.heavy();
+}
+/* if the wild pet is stun-locked or juggled too long, it bursts free with a shockwave and a few seconds of super armour */
+function wildBreakFree(u){
+  if (u.heldBy) releaseHeld(u.heldBy); if (u.grabbed) releaseHeld(u);
+  u.shock = 0; u.frozen = 0; u.stunT = 0; u.painT = 0; u.juggle = 0; u.stunAcc = 0; u.y = 0; u.vx = u.vy = 0; u.set('idle');
+  u.wStuck = 0; u.wHits = 0; u.wArmor = 240; u.invT = Math.max(u.invT || 0, 30); u.glowT = Math.max(u.glowT || 0, 80);
+  floatText(u, 'BREAK FREE!', PET_DEF[u.pid].col); flashScreen(PET_DEF[u.pid].col);
+  wildShock(u, 300, 22);
+}
+function wildGuard(u){
+  if (u.shock > 0) u.shock = 0; if (u.frozen > 0) u.frozen = 0;
+  if (G.frame % 60 === 0) u.wHits = Math.max(0, (u.wHits || 0) - 4);
+  if (u.wArmor > 0){ u.wArmor--; if (['hurt','fall','lying','getup','held'].includes(u.state)){ if (u.heldBy) releaseHeld(u.heldBy); u.y = 0; u.vy = 0; u.vx = 0; u.stunT = 0; u.juggle = 0; u.set('idle'); }
+    if (G.frame % 3 === 0) particles.push({x:u.x + rnd(-u.h*.35, u.h*.35), y:sy(u) - rnd(0, u.h), vx:0, vy:-rnd(1,3), life:18, max:18, col:PET_DEF[u.pid].col, kind:'spark'});
+    return; }
+  const stuck = ['hurt','fall','lying','getup','held'].includes(u.state);
+  u.wStuck = stuck ? (u.wStuck || 0) + 1 : Math.max(0, (u.wStuck || 0) - 2);
+  if (u.wStuck > 80 || u.wHits >= 14) wildBreakFree(u);
+}
 function wildPetDown(u){
   const W = G.wild; if (!W) return; const D = PET_DEF[W.pid];
   if (W.st >= D.ids.length - 1){ W.done = true; addMsg(`The <a>${D.stages[W.st]}</a> bows to you. It is ready to be tamed!`); SFX.heal(); return; }
-  W.next = WILD_WAIT; W.x = Math.max(G.bounds.l + 80, Math.min(G.bounds.r - 80, u.x)); W.z = u.z;
+  W.next = WILD_WAIT; W.x = wildMidX(); W.z = ZMAX()*.5;
 }
 function wildPetTick(){
   const W = G.wild; if (!W || W.done) return;
@@ -3000,7 +3034,7 @@ function petTick1(u){
   if (!G.units.includes(u)) G.units.push(u);
   const D = PET_DEF[u.pid], lv = u.petLv;
   let pl;
-  if (u.wild){ pl = null; if (u.skyT > 0){ wildPetFall(u); return; } if (u.glowT > 0) u.glowT--; }
+  if (u.wild){ pl = null; if (u.skyT > 0){ wildPetFall(u); return; } if (u.glowT > 0) u.glowT--; if (u.hp > 0) wildGuard(u); }
   else if (u.foePet){ pl = u.master; if (!pl || pl.dead || pl.hp <= 0 || !G.units.includes(pl)){ u.gone = true; for (const v of G.units) if (v.master === u && !v.dead) vanish(v); vanish(u); return; } }
   else { pl = G.player && G.player.alive() && !G.player.summon ? G.player : G.units.find(v => v.team === 0 && v.kind === 'hero' && !v.summon && v.alive()); if (pl) u.master = pl; }
   if (u.down){ u.deadT = 0; u.hp = 0; u.burn = u.poison = 0;
@@ -3369,7 +3403,7 @@ function spawnWave(){
   }
   const tm = G.story && STORY[G.story.ch] && STORY[G.story.ch].steps[G.story.i] && STORY[G.story.ch].steps[G.story.i].tame;
   if (tm && PET_DEF[tm] && !G.wild && G.zone === G.M.zones.length - 1 && G.wave === G.M.zones[G.zone].length - 1){
-    if (!G.pets) G.pets = []; G.wild = { pid:tm, st:0, x:Math.min(G.bounds.r - 120, G.cam + viewW - 140) }; wildPetSpawn(tm, 0, Math.min(G.bounds.r - 120, G.cam + viewW - 140), ZMAX()*.5); }
+    if (!G.pets) G.pets = []; const mx = wildMidX(); G.wild = { pid:tm, st:0, x:mx }; wildPetSpawn(tm, 0, mx, ZMAX()*.5); }
 }
 function addMsg(html){ G.msg.push({txt:html, t:240}); if (G.msg.length > 3) G.msg.shift(); }
 function cycleCommand(){ if (!G) return; G.command = G.command === 'attack' ? 'follow' : 'attack'; updateCmdLabel(); SFX.menu(); }
