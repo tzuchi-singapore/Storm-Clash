@@ -292,7 +292,7 @@ const HEROES = {
           sk:{ f:{name:'Mirror Slash',cost:70,icon:'bigsword'}, u:{name:'Shadow Clone',cost:90,icon:'clone'}, d:{name:'Abyss Cyclone',cost:100,icon:'spin'} } },
   chronos:{ name:'Chronos', title:'Time Thief', hidden:true, color:'#5ad8ff', hp:620, spd:3.6, pow:1.1, h:116, stats:[4,4,5], bio:'A rogue sorcerer from the magic realm. After Dr. Malgrin fell he stole the portal machine, and with forbidden time magic he jumps between eras, turning up in any chapter he likes.',
           sk:{ f:{name:'Pendulum Clock',cost:70,icon:'clock'}, u:{name:'Time Sphere',cost:90,icon:'sphere'}, d:{name:'Twelve O\'Clock',cost:100,icon:'hourglass'} } },
-  emperor:{ summon:true, name:'First Magic Emperor', title:'Forbidden Summon', color:'#e8c8ff', hp:1, spd:3.2, pow:1.2, h:134, stats:[1,1,1], bio:'', sk:{ f:{name:'Heaven Beam',cost:50,icon:'beam'}, u:{name:'Shadow Hand',cost:50,icon:'palm'}, d:{name:'Living Tornado',cost:90,icon:'spin'} } },
+  emperor:{ summon:true, heroSummon:true, name:'First Magic Emperor', title:'Forbidden Summon', color:'#e8c8ff', hp:1, spd:3.2, pow:1.2, h:134, stats:[1,1,1], bio:'', sk:{ f:{name:'Heaven Beam',cost:40,icon:'beam'}, u:{name:'Shadow Hand',cost:40,icon:'palm'}, d:{name:'Living Tornado',cost:80,icon:'spin'} } },
   ltorn:{ summon:true, superArmor:true, name:'Living Tornado', color:'#e8d8ff', hp:1, spd:1, pow:1, h:150, stats:[1,1,1], bio:'', sk:{ f:{name:'',cost:9999,icon:'star4'}, u:{name:'',cost:9999,icon:'star4'}, d:{name:'',cost:9999,icon:'star4'} } },
   lux:{ name:'Lucien', title:'Light Mage', color:'#ffe27a', hp:500, spd:3.6, pow:1.0, h:108, stats:[3,3,5], chain:['rn1','rn2','rn3'], ranged:130, bio:'The elder twin. A calm light mage whose wand calls beams from the sky and angels from heaven.',
           sk:{ f:{name:'Sky Beam',cost:70,icon:'beam'}, u:{name:'Whip Angel',cost:80,icon:'clone'}, d:{name:'Light Arrow',cost:70,icon:'spear'} } },
@@ -970,7 +970,7 @@ function applyHit(def, dir, a, src, hx, hy){
   if (def.kind === 'shieldy' && def.face === -dir && !a.heavy && !a.unblock && def.hp > 0){ dmg *= .3; sparks(hx, hy, '#cfe0ff', 6); SFX.block(); }
   if (!NOPRO && def.kind !== 'fort' && !(src && src.kind === 'tower')){ def.chain = (def.chain||0) + 1; const floor = a.sk && a.sk.endsWith('.ult') ? .55 : .35; dmg *= Math.max(floor, 1 - .07*(def.chain - 1)); }
   if (src && src.heroSummon) src.mp = Math.min(300, src.mp + 9);
-  if (src){ const gs = src.summon ? src.master : src; if (gs && gs.kind === 'hero' && !gs.dead){ if (!src.summon) gs.mp = Math.min(300, gs.mp + 6*gs.regen); if (!gs.form && gs.state !== 'ult') gs.sg = Math.min(100, gs.sg + (src.summon ? 1.2 : a.normal ? 4 : 2.2) * (gs.sgMul||1)); } const cs = src.summon && src.master ? src.master : src; cs.combo++; cs.comboT = 80; cs.comboPop = 8; }
+  if (src){ const gs = src.summon ? src.master : src; if (gs && gs.kind === 'hero' && !gs.dead){ if (!src.summon) gs.mp = Math.min(300, gs.mp + 6*gs.regen); if (!gs.form && gs.state !== 'ult' && !src.heroSummon && !(src.summon && src.master && src.master.heroSummon)) gs.sg = Math.min(100, gs.sg + (src.summon ? 1.2 : a.normal ? 4 : 2.2) * (gs.sgMul||1)); } const cs = src.summon && src.master ? src.master : src; cs.combo++; cs.comboT = 80; cs.comboPop = 8; }
   if (def.kind === 'hero' && !def.summon){ def.mp = Math.min(300, def.mp + 4); if (!def.form) def.sg = Math.min(100, def.sg + 2.5 * (def.sgMul||1)); }
   if (def.summon && !def.pet && !def.heroSummon){ def.hitsLeft--; def.flash = 6; if (def.hitsLeft <= 0){ sparks(hx, hy, def.color, 12); SFX.hit(); hitstop = Math.max(hitstop, 3); vanish(def); return true; } }
   if (dmg >= 1) particles.push({x:def.x + rnd(-10,10), y:sy(def) - def.h - 6, vx:rnd(-.4,.4), vy:-1.4, life:40, max:40, col: src && src.team === 0 ? '#fff3b0' : '#ff9a9a', kind:'dmg', txt:String(Math.round(dmg))});
@@ -1058,9 +1058,13 @@ function ropeDart(m, hits, sk){
   SFX.whoosh(); if (!f) return;
   for (let i=0;i<hits;i++) setTimeout0(() => { if (!f.alive() || !m.alive()) return; applyHit(f, -m.face, {dmg:9, kb:0, stun:34, sk}, m, f.x, sy(f) - f.h*.55); if (!f.heavy && f.kind !== 'boss' && !(f.hero && f.hero.superArmor)){ f.x += (m.x + m.face*70 - f.x)*.5; f.z += (m.z - f.z)*.5; } }, 6 + i*5);
   m.ropeF = G.frame + 70; if (m.isPlayer) floatText(m, 'Skill 2 again: follow-up!', '#ffe27a'); }
+function emperorSummon(m, x){
+  for (const v of G.units) if (v.master === m && v.id === 'emperor' && !v.dead) vanish(v);
+  const hp = Math.round(m.maxhp*.5), u = summon(m, 'emperor', x, m.z, {hp, maxhp:hp, hpShow:hp, pow:m.pow*.5, mp:120, lifeT:720, lifeMax:720, hitsLeft:0, heroSummon:true});
+  u.face = m.face; u.mp = 120; return u; }
 function lubuSummon(m){
   for (const v of G.units) if (v.master === m && v.id === 'lubu' && !v.dead) vanish(v);
-  const hp = Math.round(m.maxhp*.5), u = summon(m, 'lubu', m.x + m.face*80, m.z, {hp, maxhp:hp, hpShow:hp, spd:m.spd*.5 + 1, pow:m.pow*.5, mp:80, lifeT:1200, lifeMax:1200, hitsLeft:0, heroSummon:true});
+  const hp = Math.round(m.maxhp*.5), u = summon(m, 'lubu', m.x + m.face*80, m.z, {hp, maxhp:hp, hpShow:hp, spd:m.spd*.5 + 1, pow:m.pow*.5, mp:80, lifeT:720, lifeMax:720, hitsLeft:0, heroSummon:true});
   u.spdBase = u.spd; u.mp = 80; flashScreen('#ff2a3a'); shake = 10; SFX.roar(); floatText(u, 'Lu Bu!', '#ff3a4a');
   proj({kind:'mcircle', owner:m, img:'vfx_qcirc', x:u.x, z:u.z, y:-6, life:50, flat:true}); for (let i=0;i<24;i++) particles.push({x:u.x + rnd(-40,40), y:sy(u) - rnd(0, 140), vx:rnd(-2,2), vy:-rnd(1,4), life:30, max:30, col: i%2 ? '#ff2a3a' : '#1a0508', kind:'fire'}); return u; }
 const SPEC = {
@@ -1688,7 +1692,7 @@ const ULT = {
   chronos:{dur:64, anim:'cast', tick(m,t){
     if (t===6){ flashScreen('#c8a0ff'); SFX.skill(); const x = m.x + m.face*120; m.portalX = x; proj({kind:'tface', owner:m, x, z:Math.max(2, m.z - 6), life:96, nohit:true}); proj({kind:'portal', owner:m, x, z:m.z, life:96, nohit:true}); floatText(m, 'Forbidden Time Magic!', '#e0c0ff'); loadAtlas('emperor'); }
     if (t===38){ for (const v of G.units) if (v.master === m && v.id === 'emperor' && !v.dead) vanish(v);
-      const u = summon(m, 'emperor', m.portalX || m.x + m.face*120, m.z, {hitsLeft:15, lifeT:720, lifeMax:720, mp:300, regen:2}); u.face = m.face; shake = 12; SFX.ult(); flashScreen('#fff3d0'); ring(u.x, sy(u) - 70, '#ffe27a'); ring(u.x, sy(u) - 70, '#b06aff'); floatText(u, 'The First Magic Emperor!', '#ffe9a0'); } }},
+      const u = emperorSummon(m, m.portalX || m.x + m.face*120); shake = 12; SFX.ult(); flashScreen('#fff3d0'); ring(u.x, sy(u) - 70, '#ffe27a'); ring(u.x, sy(u) - 70, '#b06aff'); floatText(u, 'The First Magic Emperor!', '#ffe9a0'); } }},
   curse:{dur:130, anim:'cast', tick(m,t,inp){
     if (t===8){ flashScreen('#b06aff'); SFX.skill(); m.portalFx = proj({kind:'portal', owner:m, x:m.x + m.face*150, z:m.z, life:150, nohit:true}); m.pickSid = null; }
     if (t===24 && !m.pickSid && !m.pick){ if (m.isPlayer || (m.isP2 && !G.online)) { m.pick = {i:0, t:0}; G.pickU = m; } else m.pickSid = PORTAL_OPTS[Math.floor(Math.random()*PORTAL_OPTS.length)]; }
@@ -3234,12 +3238,13 @@ function drawPetHUD(){
 function drawSummonHUD(){
   const P = G.player; if (!P) return; const y0 = isTouch && (G.mode === 'versus' || G.mode === 'team') ? 130 : 92;
   for (const u of G.units){ if (!u.heroSummon || u.dead || !(u.hp > 0) || !u.master) continue;
-    if (u.master === P) drawSummonPanel(u, W/2 - 150, y0 + (G.pet ? 50 : 0), 'Demon ' + u.name, false);
-    else if (u.master.team !== P.team) drawSummonPanel(u, W - 300 - 16, y0 - 34, 'Enemy · Demon ' + u.name, true);
-    else drawSummonPanel(u, 16, y0 - 34, 'Ally · Demon ' + u.name, false); }
+    if (u.master === P) drawSummonPanel(u, W/2 - 150, y0 + (G.pet ? 50 : 0), sumLabel(u), false);
+    else if (u.master.team !== P.team) drawSummonPanel(u, W - 300 - 16, y0 - 34, 'Enemy · ' + sumLabel(u), true);
+    else drawSummonPanel(u, 16, y0 - 34, 'Ally · ' + sumLabel(u), false); }
   const hb = G.hb; if (hb && !hb.dead && hb.hp > 0 && hb.team !== P.team) drawSummonPanel(hb, W - 300 - 16, y0 - 34, 'Hidden Boss · Chronos', true, '⏳');
   const Wp = G.wild; if (Wp && Wp.u && !Wp.u.gone && Wp.u.hp > 0){ const D = PET_DEF[Wp.pid]; drawSummonPanel(Wp.u, W - 300 - 16, y0 - 34, 'Wild ' + D.stages[Wp.st], true, (Wp.st + 1) + '/' + D.ids.length); }
 }
+function sumLabel(u){ return u.id === 'lubu' ? 'Demon ' + u.name : u.name; }
 function drawSummonPanel(u, x, y, label, foe, badge){
   const w = 300, col = u.color || '#ff2a3a';
   ctx.save(); ctx.fillStyle = foe ? 'rgba(60,0,8,.72)' : 'rgba(40,6,10,.66)'; ctx.strokeStyle = foe ? '#ff5a5a' : col; ctx.lineWidth = 2; ctx.beginPath(); ctx.roundRect(x, y, w, 44, 10); ctx.fill(); ctx.stroke();
@@ -3376,6 +3381,8 @@ function aiInput(u){
   if (u.kind === 'boss' && --u.cool <= 0 && adx < 200 && adz < 50){ u.face = out.faceTo; out.act = 'slam'; u.cool = rnd(260,360); return out; }
   if (u.kind === 'hero'){
     if (u.ropeF > G.frame && u.can() && Math.random() < .3){ out.sp = 'u'; return out; }
+    if (u.id === 'emperor' && u.can() && (u.skCd = (u.skCd || 0) - 1) <= 0 && adx < 340 && adz < 50){ const hasT = G.units.some(v => v.master === u && v.id === 'ltorn' && !v.dead);
+      const c = !hasT && u.mp >= 80 ? 'd' : adx > 150 && u.mp >= 40 ? 'f' : u.mp >= 40 ? 'u' : null; if (c){ u.skCd = 40; u.face = out.faceTo; out.sp = c; return out; } }
     if (u.plan && u.plan.until > G.frame){
       if (u.plan.m === 'guard'){ out.defH = true; if (u.state !== 'defend') out.ev.push('D'); return out; }
       if (u.plan.m === 'dodge'){ if (u.z < ZMAX()/2) out.d = true; else out.u = true; return out; }
