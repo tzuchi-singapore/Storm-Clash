@@ -4563,8 +4563,8 @@ function menuKeys(){
   const L = pr.some(k => ['KeyA','ArrowLeft'].includes(k)), R = pr.some(k => ['KeyD','ArrowRight'].includes(k));
   if (S.screen === 'title' && okk){ S.screen = 'modes'; SFX.menu(); }
   else if (S.screen === 'modes'){ if (back) S.screen = 'title'; }
-  else if (S.screen === 'story'){ if (back) S.screen = 'modes'; }
-  else if (S.screen === 'chapter'){ if (back) S.screen = 'story'; }
+  else if (S.screen === 'story'){ if (back) S.screen = 'modes'; if (L || R){ storyPick(storySel() + (R ? 1 : -1)); } if (okk) openChapter(storySel()); }
+  else if (S.screen === 'chapter'){ if (back) S.screen = 'story'; if (L || R){ S.mapX = (S.mapX || 0) + (R ? 300 : -300); } }
   else if (S.screen === 'scene'){ if (back) S.screen = 'chapter'; if (okk) storyStart(S.sch, S.sst); }
   else if (S.screen === 'missions'){ if (L){ S.mode = 'mission'; S.mi = (S.mi+4)%5; } if (R){ S.mode = 'mission'; S.mi = (S.mi+1)%5; } if (L||R) SFX.menu(); if (okk) S.screen = 'team'; if (back) S.screen = 'modes'; }
   else if (S.screen === 'team'){ if (okk){ if (S.mode === 'story') storyStart(S.sch, S.sst); else if (S.mode === 'battle') startBattle(); else startMission(S.mi); } if (back) S.screen = S.mode === 'story' ? 'scene' : 'missions'; }
@@ -4580,8 +4580,17 @@ cv.addEventListener('pointerdown', e => {
   audio();
   if (!$('settings').hidden || editing) return;
   const r = cv.getBoundingClientRect(), k = Math.min(r.width/W, r.height/H), x = (e.clientX - r.left - (r.width - W*k)/2)/k, y = (e.clientY - r.top - (r.height - H*k)/2)/k;
-  for (let i = hot.length-1; i >= 0; i--){ const h = hot[i]; if (x>=h.x && x<=h.x+h.w && y>=h.y && y<=h.y+h.h){ h.act(); break; } }
+  DRAG = { id:e.pointerId, cx:e.clientX, k, dx:0, moved:false, sx:S.mapX || 0, scr:S.screen, tap:null };
+  for (let i = hot.length-1; i >= 0; i--){ const h = hot[i]; if (x>=h.x && x<=h.x+h.w && y>=h.y && y<=h.y+h.h){ if (h.up) DRAG.tap = h; else h.act(); break; } }
 });
+/* drag to scroll the stage map and swipe between chapters; taps on map items fire on release so a drag never opens a stage */
+let DRAG = null;
+cv.addEventListener('pointermove', e => { if (!DRAG || e.pointerId !== DRAG.id) return; DRAG.dx = (e.clientX - DRAG.cx)/DRAG.k; if (Math.abs(DRAG.dx) > 10) DRAG.moved = true; if (DRAG.moved && S.screen === 'chapter' && DRAG.scr === 'chapter') S.mapX = DRAG.sx - DRAG.dx; });
+const dragEnd = e => { const d = DRAG; DRAG = null; if (!d || e.pointerId !== d.id) return;
+  if (!d.moved && d.tap) d.tap.act();
+  else if (d.moved && S.screen === 'story' && d.scr === 'story' && Math.abs(d.dx) > 40) storyPick(storySel() + (d.dx < 0 ? 1 : -1)); };
+cv.addEventListener('pointerup', dragEnd); cv.addEventListener('pointercancel', dragEnd);
+cv.addEventListener('wheel', e => { if (S.screen !== 'chapter') return; e.preventDefault(); S.mapX = (S.mapX || 0) + (Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY); }, {passive:false});
 
 /* ================= modes / story / fullscreen ================= */
 const IS_IOS = /iP(hone|od|ad)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -4612,6 +4621,12 @@ function loadStoryArt(c){
   const want = STORY.map(ch => ch.cover); if (c != null && STORY[c]) want.push(...STORY[c].steps.map(s => s.art)); if (G && G.story && STORY[G.story.ch]) want.push(STORY[G.story.ch].steps[G.story.i].art);
   for (const k of want) if (!storyArt[k]){ const im = new Image(); im.decoding = 'async'; im.src = AU(k + '.webp'); storyArt[k] = im; }
 }
+const STORY_MAPS = {1:'storymap_c2', 3:'storymap_c4', 4:'storymap_c5', 5:'storymap_c6'};
+const STAGE_ICONS = ['mission','versus','team','battle','hold','tame','boss'];
+function loadMapArt(c){ const want = STAGE_ICONS.map(k => 'stage_' + k); if (STORY_MAPS[c]) want.push(STORY_MAPS[c]);
+  for (const k of want) if (!storyArt[k]){ const im = new Image(); im.decoding = 'async'; im.src = AU(k + '.webp'); storyArt[k] = im; } }
+function stageIcon(ch, i){ const s = ch.steps[i]; return 'stage_' + (s.tame ? 'tame' : i === ch.steps.length - 1 ? 'boss' : STAGE_ICONS.includes(s.type) ? s.type : 'mission'); }
+const STAGE_NAMES = { mission:'Mission', versus:'Duel', team:'Team Fight', battle:'Battle', hold:'Hold the Fort', tame:'Tame', boss:'Final Boss' };
 function drawArt(key, x, y, w, h, r){
   const im = storyArt[key]; ctx.save(); ctx.beginPath(); ctx.roundRect(x, y, w, h, r||8); ctx.clip();
   if (im && ok(im)){ const s = Math.max(w/im.naturalWidth, h/im.naturalHeight), dw = im.naturalWidth*s, dh = im.naturalHeight*s; ctx.drawImage(im, x + (w - dw)/2, y + (h - dh)/2, dw, dh); }
@@ -4651,46 +4666,144 @@ function drawModes(){
   gear();
   menuEnd();
 }
+function storySel(){ if (S.chSel == null){ const k = STORY.findIndex((ch, c) => (SAVE.story.c[c] || 0) < ch.steps.length); S.chSel = k < 0 ? 0 : k; } return S.chSel; }
+function storyPick(c){ const n = STORY.length, v = Math.max(0, Math.min(n - 1, c)); if (v !== S.chSel){ S.chSel = v; S.chAnim = 1; SFX.menu(); } }
+function openChapter(c){ S.sch = c; S.chSel = c; S.mapFocus = true; S.screen = 'chapter'; SFX.menu(); }
+function textFit(t, maxW, font, size){ ctx.font = `${font.replace('$', size)}`; let f = size; while (ctx.measureText(t).width > maxW && f > 8){ f -= .5; ctx.font = font.replace('$', f); } return f; }
+function wrapN(text, cx, y, maxW, lh, font, col){ ctx.font = font; ctx.fillStyle = col; ctx.textAlign = 'center'; const words = text.split(' '); let line = '', n = 0;
+  for (const w of words){ const test = line ? line + ' ' + w : w; if (ctx.measureText(test).width > maxW && line){ ctx.fillText(line, cx, y + n*lh); n++; line = w; } else line = test; }
+  if (line){ ctx.fillText(line, cx, y + n*lh); n++; } return n; }
+function chapterCard(c, x, y, w, h, big){
+  const ch = STORY[c], done = SAVE.story.c[c] || 0, NS = ch.steps.length, full = done >= NS;
+  panel(x, y, w, h);
+  const ah = big ? 128 : 118; drawArt(ch.cover, x + 12, y + 12, w - 24, ah, 8);
+  ctx.save(); ctx.strokeStyle = '#c9893f'; ctx.lineWidth = 2; ctx.beginPath(); ctx.roundRect(x + 12, y + 12, w - 24, ah, 8); ctx.stroke();
+  // chapter ribbon over the art
+  const rw = big ? 150 : 112, rh = big ? 30 : 24, rx = x + w/2 - rw/2, ry = y + 12 + ah - rh/2;
+  ctx.fillStyle = '#7a2e14'; ctx.beginPath(); ctx.moveTo(rx - 12, ry); ctx.lineTo(rx + rw + 12, ry); ctx.lineTo(rx + rw, ry + rh/2); ctx.lineTo(rx + rw + 12, ry + rh); ctx.lineTo(rx - 12, ry + rh); ctx.lineTo(rx, ry + rh/2); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#b8481e'; ctx.fillRect(rx, ry, rw, rh); ctx.strokeStyle = '#ffd27a'; ctx.lineWidth = 1.5; ctx.strokeRect(rx + 3, ry + 3, rw - 6, rh - 6);
+  ctx.fillStyle = '#fff6d8'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = `900 ${big ? 16 : 13}px ` + UIF; ctx.fillText(`CHAPTER ${c+1}`, x + w/2, ry + rh/2 + 1); ctx.textBaseline = 'alphabetic';
+  if (full){ ctx.fillStyle = '#2f8a5a'; ctx.beginPath(); ctx.arc(x + w - 30, y + 30, big ? 20 : 16, 0, 7); ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.stroke(); ctx.fillStyle = '#fff'; ctx.font = `900 ${big ? 20 : 16}px ` + UIF; ctx.textBaseline = 'middle'; ctx.fillText('✔', x + w - 30, y + 31); ctx.textBaseline = 'alphabetic'; }
+  ctx.restore();
+  let ty = y + 12 + ah + rh/2 + (big ? 34 : 30);
+  ctx.textAlign = 'center'; ctx.fillStyle = '#3b1206';
+  const fs = textFit(ch.name, w - 30, '$px ' + DISP, big ? 30 : 22); ctx.fillText(ch.name, x + w/2, ty);
+  if (big){
+    const by = y + h - 98, bw = w - 80, room = by - (ty + 14) - 14;
+    { let fs = 16.5; const lines = f => { ctx.font = `700 ${f}px ` + UIF; let n = 1, line = ''; for (const wd of ch.intro.split(' ')){ const tt = line ? line + ' ' + wd : wd; if (ctx.measureText(tt).width > w - 44 && line){ n++; line = wd; } else line = tt; } return n; };
+      while (fs > 11 && lines(fs)*fs*1.28 > room) fs -= .5; wrapN(ch.intro, x + w/2, ty + 14 + fs*1.05, w - 44, fs*1.28, `700 ${fs}px ` + UIF, '#4a2410'); }
+    ctx.fillStyle = 'rgba(90,40,10,.22)'; ctx.beginPath(); ctx.roundRect(x + 40, by, bw, 14, 7); ctx.fill();
+    const g = ctx.createLinearGradient(x + 40, 0, x + 40 + bw, 0); g.addColorStop(0, '#ffb02a'); g.addColorStop(1, '#ffe27a');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.roundRect(x + 40, by, Math.max(14, bw*Math.min(1, done/NS)), 14, 7); ctx.fill();
+    ctx.fillStyle = '#6a3418'; ctx.font = '900 16px ' + UIF; ctx.fillText(full ? 'Chapter complete!' : `${done} of ${NS} stages cleared`, x + w/2, by + 36);
+    btn(x + w/2 - 110, y + h - 52, 220, 40, full ? 'Replay' : done ? 'Continue' : 'Start', true, () => openChapter(c));
+  } else {
+    ctx.fillStyle = '#6a3418'; ctx.font = '800 14px ' + UIF; ctx.fillText(full ? 'Complete!' : `${done} / ${NS} cleared`, x + w/2, ty + 30);
+  }
+}
 function drawStory(){
   menuStart(.55); loadStoryArt();
   topBar('Story Mode', () => { S.screen = 'modes'; });
-  STORY.forEach((ch, c) => {
-    const NN = STORY.length, N3 = NN > 2, N4 = NN > 3, N5 = NN > 4, N6 = NN > 5, w = N6 ? 152 : N5 ? 180 : N4 ? 222 : N3 ? 296 : 430, x = N6 ? 8 + c*158 : N5 ? 10 + c*188 : N4 ? 16 + c*232 : N3 ? 22 + c*310 : 40 + c*450, y = 56, h = 450, done = SAVE.story.c[c] || 0, ah = N5 ? 100 : N4 ? 124 : N3 ? 160 : 230, dy = ah - 230;
-    panel(x, y, w, h);
-    drawArt(ch.cover, x + 12, y + 12, w - 24, ah);
-    ctx.textAlign = 'center'; ctx.fillStyle = '#7a3a14'; ctx.font = '900 13px ' + UIF; ctx.fillText(`CHAPTER ${c+1}`, x + w/2, y + 268 + dy);
-    ctx.fillStyle = '#3b1206'; ctx.font = (N6 ? '12.5px ' : N5 ? '14px ' : N4 ? '16px ' : N3 ? '20px ' : '26px ') + DISP; if (N5){ const ws = ch.name.split(' '), hf = Math.ceil(ws.length/2); ctx.fillText(ws.slice(0, hf).join(' '), x + w/2, y + 290 + dy); ctx.fillText(ws.slice(hf).join(' '), x + w/2, y + 307 + dy); } else ctx.fillText(ch.name, x + w/2, y + 298 + dy);
-    wrap(ch.intro, x + w/2, y + (N5 ? 330 : 322) + dy, w - (N3 ? 20 : 50), N6 ? 11 : N5 ? 12.5 : N4 ? 14 : N3 ? 15 : 17, (N6 ? '700 8.4px ' : N5 ? '700 9.5px ' : N4 ? '700 10.5px ' : N3 ? '700 11.5px ' : '700 13px ') + UIF, '#4a2410');
-    const bw = w - 60; ctx.fillStyle = 'rgba(90,40,10,.2)'; ctx.fillRect(x + 30, y + 384, bw, 10); ctx.fillStyle = '#ffc23a'; ctx.fillRect(x + 30, y + 384, bw*Math.min(1, done/ch.steps.length), 10);
-    ctx.fillStyle = '#6a3418'; ctx.font = '800 12px ' + UIF; ctx.fillText(done >= ch.steps.length ? 'Chapter complete!' : `${done} of ${ch.steps.length} stages cleared`, x + w/2, y + 412);
-    btn(x + w/2 - Math.min(90, w/2 - 8), y + 418, Math.min(180, w - 16), 26, done >= ch.steps.length ? 'Replay' : done ? 'Continue' : 'Start', true, () => { S.sch = c; S.screen = 'chapter'; SFX.menu(); }, true);
-    hot.push({x:x+HOTX, y, w, h:400, act:() => { S.sch = c; S.screen = 'chapter'; SFX.menu(); }});
-  });
+  const sel = storySel(), n = STORY.length;
+  S.chAnim = Math.max(0, (S.chAnim || 0) - .12);
+  // neighbours, dimmed
+  for (const d of [-1, 1]){ const c = sel + d; if (c < 0 || c >= n) continue;
+    const w = 236, h = 330, x = d < 0 ? 60 : 960 - 60 - w, y = 108;
+    ctx.save(); ctx.globalAlpha = .82; chapterCard(c, x, y, w, h, false); ctx.restore();
+    ctx.fillStyle = 'rgba(20,8,0,.28)'; ctx.beginPath(); ctx.roundRect(x - 4, y - 4, w + 8, h + 8, 10); ctx.fill();
+    hot.push({x:x + HOTX, y, w, h, act:() => storyPick(c)}); }
+  const w = 440, h = 462, x = 480 - w/2, y = 47 + S.chAnim*14;
+  ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.6)'; ctx.shadowBlur = 24; ctx.fillStyle = '#000'; ctx.fillRect(x + 10, y + 10, w - 20, h - 20); ctx.restore();
+  hot.push({x:x + HOTX, y, w, h:h - 60, act:() => openChapter(sel)});
+  chapterCard(sel, x, y, w, h, true);
+  // arrows
+  const arrow = (ax, dir, on) => { ctx.save(); ctx.globalAlpha = on ? 1 : .3; ctx.fillStyle = '#2a0b04'; ctx.beginPath(); ctx.arc(ax, 270, 24, 0, 7); ctx.fill(); ctx.strokeStyle = '#ffd27a'; ctx.lineWidth = 3; ctx.stroke();
+    ctx.fillStyle = '#ffd27a'; ctx.beginPath(); ctx.moveTo(ax + dir*9, 270); ctx.lineTo(ax - dir*6, 259); ctx.lineTo(ax - dir*6, 281); ctx.closePath(); ctx.fill(); ctx.restore();
+    if (on) hot.push({x:ax - 28 + HOTX, y:242, w:56, h:56, act:() => storyPick(sel + dir)}); };
+  arrow(30, -1, sel > 0); arrow(930, 1, sel < n - 1);
+  // page dots
+  for (let c=0;c<n;c++){ const dx = 480 + (c - (n-1)/2)*26; ctx.fillStyle = c === sel ? '#ffd84a' : 'rgba(255,240,200,.45)'; ctx.beginPath(); ctx.arc(dx, 524, c === sel ? 6 : 4.5, 0, 7); ctx.fill(); hot.push({x:dx - 12 + HOTX, y:506, w:24, h:24, act:() => storyPick(c)}); }
   menuEnd();
 }
+/* stage map: a winding trail across a painted chapter map that scrolls sideways */
+const MAP_Y0 = 50, MAP_H = 470, MAP_X0 = 20, MAP_W = 920;
+function mapLayout(c){
+  const ch = STORY[c], NS = ch.steps.length, step = 96, WW = Math.max(MAP_W, 110 + (NS - 1)*step + 110);
+  let seed = 7 + c*131; const rr = () => (seed = (seed*9301 + 49297) % 233280) / 233280;
+  const pts = []; let px = 100;
+  for (let i=0;i<NS;i++){ const side = i % 2 ? 1 : -1, drift = Math.sin(i*.62 + c*1.7)*70 + Math.sin(i*1.9 + c)*18, amp = 38 + rr()*72;
+    pts.push([px, 268 + drift + side*amp]); px += step - 16 + rr()*34; }
+  for (const p of pts) p[1] = Math.max(120, Math.min(415, p[1]));
+  return { WW: Math.max(MAP_W, px + 20), pts };
+}
+function trailPath(pts){ ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
+  for (let i=0;i<pts.length-1;i++){ const p0 = pts[Math.max(0,i-1)], p1 = pts[i], p2 = pts[i+1], p3 = pts[Math.min(pts.length-1,i+2)];
+    ctx.bezierCurveTo(p1[0] + (p2[0]-p0[0])/6, p1[1] + (p2[1]-p0[1])/6, p2[0] - (p3[0]-p1[0])/6, p2[1] - (p3[1]-p1[1])/6, p2[0], p2[1]); } }
 function drawChapter(){
-  menuStart(.6); loadStoryArt(S.sch||0);
-  const c = S.sch||0, ch = STORY[c], done = SAVE.story.c[c];
+  menuStart(.6); loadStoryArt(S.sch||0); loadMapArt(S.sch||0);
+  const c = S.sch||0, ch = STORY[c], done = SAVE.story.c[c] || 0, NS = ch.steps.length, L = mapLayout(c), cur = Math.min(done, NS - 1);
   topBar(`Chapter ${c+1} · ${ch.name}`, () => { S.screen = 'story'; });
-  drawArt(ch.cover, 20, 50, 920, 470, 12); ctx.fillStyle = 'rgba(20,8,0,.55)'; ctx.fillRect(20, 50, 920, 470);
-  const NS = ch.steps.length, PER = NS > 12 ? 6 : Math.ceil(NS/2), GAP = 700/Math.max(1, PER - 1), ROWS = Math.ceil(NS/PER), RH = ROWS > 2 ? 100 : 200;
-  const pos = i => { const r = Math.floor(i/PER), k = i % PER; return [130 + (r % 2 ? PER - 1 - k : k)*GAP, (ROWS > 2 ? 132 : 190) + r*RH]; };
-  ctx.strokeStyle = 'rgba(255,220,140,.6)'; ctx.lineWidth = 6; ctx.setLineDash([12, 10]); ctx.beginPath(); ch.steps.forEach((s, i) => { const [x, y] = pos(i); if (!i) ctx.moveTo(x, y); else ctx.lineTo(x, y); }); ctx.stroke(); ctx.setLineDash([]);
+  const maxX = L.WW - MAP_W;
+  if (S.mapFocus || S.mapC !== c){ S.mapFocus = false; S.mapC = c; S.mapX = L.pts[cur][0] - MAP_W/2; S.mapV = S.mapX; }
+  S.mapX = Math.max(0, Math.min(maxX, S.mapX || 0)); S.mapV = S.mapV == null ? S.mapX : S.mapV + (S.mapX - S.mapV)*.35;
+  const ox = MAP_X0 - S.mapV, t = menuT;
+  // frame
+  ctx.save(); ctx.fillStyle = '#5a1e0c'; ctx.beginPath(); ctx.roundRect(MAP_X0 - 6, MAP_Y0 - 6, MAP_W + 12, MAP_H + 12, 14); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(MAP_X0, MAP_Y0, MAP_W, MAP_H, 10); ctx.clip();
+  // background map (cover the whole scrollable width, with a little parallax)
+  const mk = STORY_MAPS[c], im = mk ? storyArt[mk] : storyArt[ch.cover];
+  if (im && ok(im)){ const bw = L.WW*.9 + MAP_W*.1, s2 = Math.max(bw/im.naturalWidth, MAP_H/im.naturalHeight), dw = im.naturalWidth*s2, dh = im.naturalHeight*s2, px = MAP_X0 - S.mapV*((bw - MAP_W)/Math.max(1, maxX));
+    ctx.drawImage(im, px, MAP_Y0 + (MAP_H - dh)/2, dw, dh); if (!mk){ ctx.fillStyle = 'rgba(30,14,0,.35)'; ctx.fillRect(MAP_X0, MAP_Y0, MAP_W, MAP_H); } }
+  else { ctx.fillStyle = '#3a2a1a'; ctx.fillRect(MAP_X0, MAP_Y0, MAP_W, MAP_H); }
+  { const vg = ctx.createRadialGradient(480, 285, 200, 480, 285, 620); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(10,4,0,.55)'); ctx.fillStyle = vg; ctx.fillRect(MAP_X0, MAP_Y0, MAP_W, MAP_H); }
+  ctx.translate(ox, 0);
+  const P = L.pts;
+  // trail: shadow, dirt road, then dashes (gold where cleared)
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  trailPath(P); ctx.strokeStyle = 'rgba(20,8,0,.55)'; ctx.lineWidth = 22; ctx.stroke();
+  trailPath(P); ctx.strokeStyle = '#c9a26a'; ctx.lineWidth = 15; ctx.stroke();
+  trailPath(P); ctx.strokeStyle = '#e6c890'; ctx.lineWidth = 8; ctx.stroke();
+  ctx.setLineDash([2, 14]); trailPath(P); ctx.strokeStyle = 'rgba(110,70,30,.8)'; ctx.lineWidth = 5; ctx.stroke();
+  if (done > 0){ ctx.save(); ctx.setLineDash([12, 10]); ctx.lineDashOffset = -t*.6; trailPath(P.slice(0, Math.min(NS, done + 1))); ctx.strokeStyle = '#ffd84a'; ctx.shadowColor = '#ffb020'; ctx.shadowBlur = 10; ctx.lineWidth = 5; ctx.stroke(); ctx.restore(); }
+  ctx.setLineDash([]);
+  // nodes
   ch.steps.forEach((s, i) => {
-    const [x, y] = pos(i), open = i <= done, cur = i === Math.min(done, NS - 1) && done < NS, r = (cur ? 50 + Math.sin(menuT*.12)*3 : 44) * (NS > 12 ? .62 : NS > 10 ? .88 : 1);
+    const [x, y] = P[i], open = i <= done, isCur = i === cur && done < NS, last = i === NS - 1, r = last ? 40 : 31, bob = isCur ? Math.sin(t*.12)*3 : 0, key = stageIcon(ch, i), ic = storyArt[key];
+    if (x + ox < -80 || x + ox > 1040) return;
     ctx.save();
-    ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fillStyle = !open ? '#3a3a44' : i < done ? '#2f8a5a' : s.type === 'mission' ? '#c0602a' : s.type === 'battle' ? '#8a4ab0' : s.type === 'hold' ? '#3a8a8a' : '#2a6ab0'; ctx.fill();
-    ctx.lineWidth = cur ? 5 : 3; ctx.strokeStyle = cur ? '#ffe27a' : '#fff3d0'; ctx.stroke();
-    ctx.fillStyle = open ? '#fff' : '#888'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    const SM = NS > 12; ctx.font = (s.type === 'team' || s.type === 'versus' ? (SM ? '900 14px ' : '900 20px ') : (SM ? '900 20px ' : '900 30px ')) + UIF; ctx.fillText(s.tame ? '🐾' : s.type === 'team' ? `${s.n}v${s.n}` : s.type === 'versus' ? '1v1' : STEP_ICON[s.type], x, y - (SM ? 3 : 4));
-    ctx.textBaseline = 'alphabetic'; ctx.font = (SM ? '900 8.5px ' : '900 11px ') + UIF; ctx.fillText(i < done ? '✔ CLEAR' : open ? (s.tame ? 'TAME' : stepLabel(s).toUpperCase()) : 'LOCKED', x, y + (SM ? 17 : 26));
-    { const lb = `${i+1}. ${s.title.replace(/^(Duel|Battle|Hold the Fort|\d vs \d): /, '')}`; let fs = SM ? 10.5 : 12; ctx.font = `800 ${fs}px ` + UIF; while (SM && ctx.measureText(lb).width > GAP - 8 && fs > 7.5){ fs -= .5; ctx.font = `800 ${fs}px ` + UIF; } ctx.fillStyle = open ? '#fff6c8' : '#999'; ctx.fillText(lb, x, y + r + (SM ? 13 : 18)); }
+    ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.beginPath(); ctx.ellipse(x, y + r*.92, r*.9, r*.28, 0, 0, 7); ctx.fill();
+    if (isCur){ const pk = .5 + .5*Math.sin(t*.15); ctx.save(); ctx.globalCompositeOperation = 'lighter'; const g = ctx.createRadialGradient(x, y + bob, r*.6, x, y + bob, r*2); g.addColorStop(0, `rgba(255,220,100,${.55*pk + .25})`); g.addColorStop(1, 'rgba(255,200,80,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y + bob, r*2, 0, 7); ctx.fill(); ctx.restore();
+      ctx.strokeStyle = `rgba(255,236,150,${1 - (t % 50)/50})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y + bob, r + 4 + (t % 50)*.5, 0, 7); ctx.stroke(); }
+    if (ic && ok(ic)) ctx.drawImage(ic, x - r, y - r + bob, r*2, r*2);
+    else { ctx.fillStyle = '#7a3a14'; ctx.beginPath(); ctx.arc(x, y + bob, r, 0, 7); ctx.fill(); }
+    if (!open){ ctx.fillStyle = 'rgba(15,12,20,.62)'; ctx.beginPath(); ctx.arc(x, y, r*.86, 0, 7); ctx.fill();
+      ctx.fillStyle = '#d8d0c0'; ctx.fillRect(x - 8, y - 2, 16, 13); ctx.strokeStyle = '#d8d0c0'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y - 3, 6, Math.PI, 0); ctx.stroke(); }
+    if (i < done){ const bx = x + r*.68, by2 = y + r*.62 + bob; ctx.fillStyle = '#2f9a5a'; ctx.beginPath(); ctx.arc(bx, by2, 11, 0, 7); ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.5; ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(bx - 5, by2); ctx.lineTo(bx - 1, by2 + 4); ctx.lineTo(bx + 6, by2 - 4); ctx.stroke(); }
+    if (isCur){ const ay = y - r - 16 + Math.sin(t*.18)*4; ctx.fillStyle = '#ffd84a'; ctx.strokeStyle = '#5a1e0c'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x, ay + 12); ctx.lineTo(x - 11, ay - 4); ctx.lineTo(x + 11, ay - 4); ctx.closePath(); ctx.stroke(); ctx.fill(); }
+    // name plate: above for high nodes, below for low ones
+    const nb = [P[i-1], P[i+1]].filter(Boolean), up = y < nb.reduce((a, q) => a + q[1], 0)/nb.length, lb = `${i+1}. ${s.title.replace(/^(Duel|Battle|Hold the Fort|\d vs \d): /, '')}`;
+    const fs = textFit(lb, 150, '900 $px ' + UIF, 14), tw = ctx.measureText(lb).width, py = up ? y - r - (isCur ? 34 : 12) : y + r + 16;
+    ctx.fillStyle = open ? 'rgba(42,11,4,.86)' : 'rgba(30,30,36,.8)'; ctx.beginPath(); ctx.roundRect(x - tw/2 - 9, py - fs - 2, tw + 18, fs + 10, 8); ctx.fill();
+    ctx.strokeStyle = isCur ? '#ffd84a' : open ? 'rgba(255,210,122,.6)' : 'rgba(160,160,170,.4)'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.fillStyle = open ? (isCur ? '#ffe27a' : '#fff6d8') : '#a8a8b0'; ctx.textAlign = 'center'; ctx.fillText(lb, x, py + 1);
     ctx.restore();
-    if (open) hot.push({x:x - (NS > 12 ? 40 : 50) + HOTX, y:y - (NS > 12 ? 40 : 50), w:NS > 12 ? 80 : 100, h:NS > 12 ? 80 : 100, act:() => { S.sst = i; S.screen = 'scene'; SFX.menu(); }});
+    if (open) hot.push({x:x - r - 6 + ox + HOTX, y:y - r - 6, w:r*2 + 12, h:r*2 + 12, up:true, act:() => { S.sst = i; S.screen = 'scene'; SFX.menu(); }});
   });
-  ctx.textAlign = 'center'; ctx.font = '800 13px ' + UIF; ctx.fillStyle = '#fff';
-  ctx.fillText(done >= ch.steps.length ? 'Chapter complete! Replay any stage.' : `Tap the glowing stage to continue · ${NS} stages · 🐾 = tame this chapter's pet`, 480, 512);
-  petButton(748, 60, 182, 38, 'chapter', 112);
+  ctx.restore();
+  // edge fades + scroll arrows
+  for (const [ex, dir] of [[MAP_X0, 1], [MAP_X0 + MAP_W, -1]]){ const can = dir > 0 ? S.mapX > 2 : S.mapX < maxX - 2; if (!can) continue;
+    const g = ctx.createLinearGradient(ex, 0, ex + dir*60, 0); g.addColorStop(0, 'rgba(20,8,0,.6)'); g.addColorStop(1, 'rgba(20,8,0,0)'); ctx.fillStyle = g; ctx.fillRect(dir > 0 ? ex : ex - 60, MAP_Y0, 60, MAP_H);
+    const ax = ex + dir*24, ay = 285; ctx.fillStyle = 'rgba(42,11,4,.85)'; ctx.beginPath(); ctx.arc(ax, ay, 18, 0, 7); ctx.fill(); ctx.strokeStyle = '#ffd27a'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = '#ffd27a'; ctx.beginPath(); ctx.moveTo(ax - dir*7, ay); ctx.lineTo(ax + dir*5, ay - 9); ctx.lineTo(ax + dir*5, ay + 9); ctx.closePath(); ctx.fill();
+    hot.push({x:ax - 22 + HOTX, y:ay - 22, w:44, h:44, act:() => { S.mapX = (S.mapX || 0) - dir*420; }}); }
+  // legend + progress bar
+  { ctx.fillStyle = 'rgba(20,8,0,.78)'; ctx.beginPath(); ctx.roundRect(MAP_X0 + 10, MAP_Y0 + MAP_H - 44, MAP_W - 20, 36, 10); ctx.fill();
+    const keys = ['mission','versus','team','battle','hold','tame','boss']; let lx = MAP_X0 + 22; ctx.font = '800 13px ' + UIF; ctx.textAlign = 'left';
+    for (const k of keys){ const im2 = storyArt['stage_' + k]; if (im2 && ok(im2)) ctx.drawImage(im2, lx, MAP_Y0 + MAP_H - 39, 26, 26); ctx.fillStyle = '#fff6d8'; ctx.fillText(STAGE_NAMES[k], lx + 30, MAP_Y0 + MAP_H - 21); lx += 30 + ctx.measureText(STAGE_NAMES[k]).width + 16; }
+    ctx.textAlign = 'right'; ctx.fillStyle = '#ffd84a'; ctx.font = '900 14px ' + UIF; ctx.fillText(done >= NS ? 'Chapter complete!' : `${done} / ${NS} cleared`, MAP_X0 + MAP_W - 22, MAP_Y0 + MAP_H - 21);
+    if (maxX > 0){ const tw = MAP_W - 40, kx = MAP_W/L.WW*tw; ctx.fillStyle = 'rgba(255,240,200,.25)'; ctx.fillRect(MAP_X0 + 20, MAP_Y0 + MAP_H - 6, tw, 3); ctx.fillStyle = '#ffd84a'; ctx.fillRect(MAP_X0 + 20 + (S.mapV/maxX)*(tw - kx), MAP_Y0 + MAP_H - 6, kx, 3); } }
+  petButton(10, 4, 178, 32, 'chapter', 112);
   menuEnd();
 }
 function drawScene(){
@@ -4700,9 +4813,11 @@ function drawScene(){
   drawArt(s.art, 20, 50, 560, 316, 12);
   ctx.strokeStyle = '#ffe6a8'; ctx.lineWidth = 3; ctx.beginPath(); ctx.roundRect(20, 50, 560, 316, 12); ctx.stroke();
   panel(596, 50, 344, 470);
-  ctx.textAlign = 'center'; ctx.fillStyle = '#7a3a14'; ctx.font = '900 13px ' + UIF; ctx.fillText(stepLabel(s).toUpperCase(), 768, 84);
-  ctx.fillStyle = '#3b1206'; ctx.font = '22px ' + DISP; ctx.fillText(s.title, 768, 112);
-  wrap(s.text, 768, 140, 300, 18, '700 14px ' + UIF, '#4a2410');
+  loadMapArt(c); { const ik = stageIcon(STORY[c], i), ic = storyArt[ik]; if (ic && ok(ic)) ctx.drawImage(ic, 612, 62, 48, 48); }
+  ctx.textAlign = 'left'; ctx.fillStyle = '#7a3a14'; ctx.font = '900 16px ' + UIF; ctx.fillText(STAGE_NAMES[stageIcon(STORY[c], i).slice(6)].toUpperCase() + (s.type === 'team' ? ` · ${s.n} vs ${s.n}` : ''), 668, 92);
+  ctx.textAlign = 'center'; ctx.fillStyle = '#3b1206'; textFit(s.title, 316, '$px ' + DISP, 27); ctx.fillText(s.title, 768, 142);
+  { let fs = 18; ctx.font = `700 ${fs}px ` + UIF; while (fs > 14){ const words = s.text.split(' '); let line = '', n = 1; for (const w of words){ const tt = line ? line + ' ' + w : w; if (ctx.measureText(tt).width > 314){ n++; line = w; } else line = tt; } if (n*fs*1.3 <= 186) break; fs -= .5; ctx.font = `700 ${fs}px ` + UIF; }
+    wrap(s.text, 768, 172, 314, fs*1.3, `700 ${fs}px ` + UIF, '#4a2410'); }
   // lineup
   const mine = s.type === 'versus' ? [SAVE.team[0]] : s.type === 'team' ? SAVE.team.slice(0, s.n) : SAVE.team.slice(0, s.type === 'battle' ? 2 : 5);
   const foes = s.type === 'versus' ? [s.foe] : s.type === 'team' ? s.foes : null;
