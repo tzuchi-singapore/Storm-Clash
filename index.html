@@ -4180,7 +4180,22 @@ function btn(x, y, w, h, label, hi, act, small, col){
 function topBar(title, back){
   ctx.fillStyle = '#2a0b04'; ctx.fillRect(-MX, 0, W, 40);
   ctx.fillStyle = '#fff'; ctx.font = '24px ' + DISP; ctx.textAlign = 'center'; ctx.fillText(title, 480, 29);
-  if (back) btn(914, 4, 40, 32, '✕', false, back, true, '#7a2e14');
+  if (back) closeBtn(926, 28, back);
+}
+/* big round close button with a gold rim; its tap area is wider than the drawing so it is easy to hit on small phones */
+function closeBtn(cx, cy, act){
+  const r = 22, pk = .5 + .5*Math.sin(menuT*.08);
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.beginPath(); ctx.arc(cx, cy + 3, r + 3, 0, 7); ctx.fill();
+  const rim = ctx.createLinearGradient(0, cy - r - 3, 0, cy + r + 3); rim.addColorStop(0, '#fff2b0'); rim.addColorStop(.5, '#e8b440'); rim.addColorStop(1, '#9a6418');
+  ctx.fillStyle = rim; ctx.beginPath(); ctx.arc(cx, cy, r + 3, 0, 7); ctx.fill();
+  const g = ctx.createRadialGradient(cx - 7, cy - 9, 3, cx, cy, r); g.addColorStop(0, '#ff8a6a'); g.addColorStop(.55, '#d8352a'); g.addColorStop(1, '#8a1410');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.fill();
+  ctx.fillStyle = `rgba(255,255,255,${.28 + .08*pk})`; ctx.beginPath(); ctx.ellipse(cx, cy - r*.45, r*.62, r*.32, 0, 0, 7); ctx.fill();
+  ctx.lineCap = 'round'; const k = 8.5;
+  for (const [col, lw] of [['rgba(70,8,4,.7)', 8.5], ['#ffffff', 5]]){ ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.beginPath(); ctx.moveTo(cx - k, cy - k + 1); ctx.lineTo(cx + k, cy + k + 1); ctx.moveTo(cx + k, cy - k + 1); ctx.lineTo(cx - k, cy + k + 1); ctx.stroke(); }
+  ctx.restore();
+  hot.push({x:cx - 46 + HOTX, y:0, w:46 + 34 + Math.max(0, MX), h:64, act:() => { SFX.menu(); act(); }});
 }
 function drawSprite(key, cx, by, h, glow){
   const m = META[key], im = IMG[key]; if (!m || !ok(im)) return;
