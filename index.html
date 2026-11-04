@@ -117,6 +117,8 @@ if (!SAVE.story) SAVE.story = { c:[0, 0, 0, 0, 0] };
 if (!SAVE.storyV2){ SAVE.storyV2 = true; SAVE.story.c = SAVE.story.c.map(n => n >= 9 ? n + 1 : n); }
 while (SAVE.story.c.length < 6) SAVE.story.c.push(0);
 if (!SAVE.storyV3){ SAVE.storyV3 = true; const OLDPOS = [0,2,4,6,8,10,12,14,17,19,21]; SAVE.story.c = SAVE.story.c.map(n => n >= 11 ? 22 : n > 0 ? OLDPOS[n-1] + 1 : 0); }
+if (SAVE.shards == null) SAVE.shards = 0; if (!SAVE.unlocked) SAVE.unlocked = {};
+setTimeout(() => { try { if (SAVE.team) SAVE.team = SAVE.team.map(id => id && heroLocked(id) ? null : id); if (!SAVE.team[0]) SAVE.team[0] = HERO_IDS.find(h => !heroLocked(h) && !SAVE.team.includes(h)); } catch(e){} }, 0);
 if (!SAVE.deck){ SAVE.deck = {'atk:0':1, 'hp:0':1, 'gauge:0':1, 'crit:1':1}; } if (!SAVE.equip) SAVE.equip = [null, null, null];
 function persist(){ try { localStorage.setItem('stormclash3', JSON.stringify(SAVE)); } catch(e){} }
 
@@ -342,6 +344,14 @@ const tagOf = u => !u || u.kind !== 'hero' ? null : u.state === 'sp' ? u.sid + '
 const AID = id => (HEROES[id] && HEROES[id].atlas && !ANIM[id]) ? HEROES[id].atlas : id;
 const ULTN = { chronos:'Forbidden Time Magic', kai:'Storm Fury', mei:'Icicle Rain', rajan:'Stone Cyclone', zara:'Thunderstorm', hong:'Blazing Blade', ayu:'Sacred Bloom', knight:'Demon Knight', monk:'Golden Buddha', ninja:'Shade Clone', samurai:'Thousand Cuts', sci:'Bolt Mecha', lord:'Chaos Ascension', taoist:'Heavenly Bagua', madsci:'Bio Machine', xian:'Deity Ascension', yao:'Celestial Lotus', brute:'Cerberus Unleashed', vraxx:'Flight Suit', rio:'Star Armor', mira:'Code Blue', bella:'VIP Security', queen:'Royal Guard', bone:'Dragon Lord', curse:'Dimension Gate', kael:'Possessed Blade', lux:'Heaven\'s Gate', pharaoh:'Anunnaki God', qin:'Demon General Lu Bu', guan:'God of War', liu:'Benevolent Lord' };
 const HERO_IDS = Object.keys(HEROES).filter(k => !HEROES[k].form && !HEROES[k].summon);
+const SHARDS_NEED = 99;
+const heroLocked = id => !!(HEROES[id] && HEROES[id].hidden && !(SAVE.unlocked && SAVE.unlocked[id]));
+const openHero = (id, fb) => heroLocked(id) ? (fb || HERO_IDS.find(h => !heroLocked(h))) : id;
+function stepHero(cur, d){ const n = HERO_IDS.length; let i = HERO_IDS.indexOf(cur); for (let k=0;k<n;k++){ i = (i + d + n) % n; if (!heroLocked(HERO_IDS[i])) return HERO_IDS[i]; } return cur; }
+function lockedHero(id, cx, by, h){ ctx.save(); ctx.globalAlpha = .22; heroSprite(id, 'idle', cx, by, h, false); ctx.restore();
+  ctx.save(); ctx.fillStyle = 'rgba(30,10,50,.75)'; ctx.beginPath(); ctx.arc(cx, by - h*.45, Math.min(18, h*.24), 0, 7); ctx.fill(); ctx.strokeStyle = '#c08aff'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.fillStyle = '#e8d8ff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = `900 ${Math.min(18, h*.24)}px ` + UIF; ctx.fillText('?', cx, by - h*.45 + 1); ctx.textBaseline = 'alphabetic'; ctx.restore(); }
+function lockToast(id){ S.lockMsg = { id, t:150 }; SFX.block(); }
 const RS = Math.min(74, 880/(HERO_IDS.length-1)), RSZ = RS < 70 ? 62 : 70;
 const SOLDIER = {
   spear:  { name:'Spearman', hp:95,  spd:2.2, h:98,  pow:1, cost:40 },
@@ -1181,7 +1191,7 @@ function chargeKey(m, t, inp, key, need, col){
   m.chgOn = false; return false;
 }
 const PORTAL_OPTS = ['lord','madsci','brute','vraxx','queen','bone'];
-const NO_NEGATE = ['tsphere','tbomb','tface','bdrag2','barmor','portal','hportal','prop','bdrag','erupt','mcircle','emitter','bagua','blizz','ablade','mblade','skybeam','shadowh'];
+const NO_NEGATE = ['shard','tsphere','tbomb','tface','bdrag2','barmor','portal','hportal','prop','bdrag','erupt','mcircle','emitter','bagua','blizz','ablade','mblade','skybeam','shadowh'];
 function cutSpells(m, R, reflect){
   for (const p of fx){ if (p.dead || !p.owner || p.owner.team === m.team || NO_NEGATE.includes(p.kind)) continue; const dx = (p.x - m.x)*m.face; if (dx < -30 || dx > R || Math.abs(p.z - m.z) > 60) continue;
     if (reflect && p.vx){ p.owner = m; p.vx = -p.vx; if (p.vx0) p.vx0 = -p.vx0; p.hit.clear(); if (p.hc) p.hc.clear(); p.sk = 'kaelx.f'; p.t = Math.min(p.t, 6); sparks(p.x, G.st.FT + p.z + p.y, '#ff3a5a', 8); }
@@ -1938,6 +1948,14 @@ function updateFx(){
       if (p.t > p.life) p.dead = true; continue; }
     if (p.kind === 'tbomb'){ const o = p.owner; if (!o.alive() || o.state !== 'sp' || !p.tgt || p.tgt.dead){ p.dead = true; if (o.tbomb === p) o.tbomb = null; continue; } p.x = p.tgt.x; p.z = p.tgt.z; if (p.t > p.life) p.dead = true; continue; }
     if (p.kind === 'tface'){ if (p.t > p.life) p.dead = true; continue; }
+    if (p.kind === 'shard'){ const T = p.tgt;
+      if (p.t < 40){ p.y = -90 - Math.sin(p.t/40*Math.PI/2)*60; }
+      else if (T && !T.dead){ const tx = T.x, tz = T.z, ty = -T.h*.6, k = .14; p.x += (tx - p.x)*k; p.z += (tz - p.z)*k; p.y += (ty - p.y)*k;
+        if (Math.abs(tx - p.x) < 14 && Math.abs(ty - p.y) < 14 && !p.got){ p.got = true; p.dead = true; SFX.coin(); ring(T.x, sy(T) - T.h*.6, '#c08aff');
+          floatText(T, `Soul Shard +1  (${Math.min(SHARDS_NEED, p.n)}/${SHARDS_NEED})`, '#e0c0ff'); addMsg(`You got a <e>Soul Shard</e>! ${Math.min(SHARDS_NEED, p.n)}/${SHARDS_NEED} to summon <e>Chronos</e>.`); } }
+      if (p.t % 2 === 0) particles.push({x:p.x + rnd(-8,8), y:G.st.FT + p.z + p.y + rnd(-8,8), vx:0, vy:-rnd(.3,1.2), life:16, max:16, col: Math.random() < .5 ? '#c08aff' : '#7af0ff', kind:'spark'});
+      if (p.t > p.life) p.dead = true;
+      continue; }
     if (p.kind === 'tclock' && p.t > p.delay && (p.t % p.every === 0)) for (let i=0;i<6;i++) particles.push({x:p.x + Math.sin(0)*0 + rnd(-14,14), y:G.st.FT + p.z - 70 + rnd(-10,10), vx:rnd(-3,3), vy:rnd(-2,1), life:14, max:14, col: i%2 ? '#ffe27a' : '#7af0ff', kind:'spark'});
     if (p.kind === 'gas' && p.t % 2 === 0) particles.push({x:p.x + rnd(-p.hitR, p.hitR), y:G.st.FT + p.z - rnd(0, 70), vx:rnd(-.6,.6), vy:-rnd(.2,1), life:40, max:40, col:`rgba(${120 + rnd(0,40)|0},255,${60 + rnd(0,40)|0},.55)`, kind:'smoke', s:rnd(14,26)});
     if (p.kind === 'eburst'){ if (p.t % 2 === 0) particles.push({x:p.x + rnd(-p.hitR, p.hitR), y:G.st.FT + p.z - rnd(10, 140), vx:rnd(-2,2), vy:rnd(-2,2), life:10, max:10, col: Math.random() < .5 ? '#9ff4ff' : '#ffffff', kind:'spark'}); }
@@ -2287,6 +2305,7 @@ function drawFx(p){
       clockHands(cx, cy, r*.8, hourA, p.step ? minA : 0, p.hourT ? '#ffffff' : '#ffe27a');
       if (p.boom && t - p.boom < 8){ ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 1 - (t - p.boom)/8; ctx.fillStyle = '#e8fbff'; ctx.beginPath(); ctx.arc(cx, cy, r*1.2 + (t - p.boom)*10, 0, 7); ctx.fill(); }
       break; }
+    case 'shard': { const s2 = 1 + Math.sin(t*.2)*.08; shardIcon(gx, gy + p.y, 16*s2, t); break; }
     case 'tface': { const k = Math.min(1, t/14)*Math.min(1, (p.life - t)/14); ctx.globalAlpha = Math.max(0, k)*.85; ctx.globalCompositeOperation = 'lighter'; ctx.translate(gx, gy - 150); ctx.rotate(t*.02); vimg('vfx_tface', 0, 0, 300*(.6 + .4*k), 0); ctx.rotate(-t*.02); clockHands(0, 0, 90*k, t*.03, t*.36, '#ffe27a'); break; }
     case 'skybeam': { const T = p.delay, k = Math.min(1, t/8) * Math.min(1, (p.life + T - t)/10), cy = gy - 330;
       ctx.globalAlpha = Math.max(0, k); ctx.save(); ctx.translate(gx, cy); ctx.scale(1, .32); ctx.rotate(t*.05); vimg('vfx_lcircle', 0, 0, 190, 0); ctx.restore();
@@ -3518,6 +3537,14 @@ function hiddenBossArrive(){
   SFX.siren(); shake = 10; flashScreen('#7a3aff');
   addMsg('<e>WARNING!</e> The hidden boss <e>Chronos</e> has travelled here through time!');
 }
+function hbCheck(){
+  const u = G.hb; if (!u || G.hbDrop || !(u.hp <= 0 || u.dead)) return;
+  G.hbDrop = true; const P = G.player || G.units.find(v => v.team === 0 && v.kind === 'hero' && !v.summon);
+  SAVE.shards = (SAVE.shards || 0) + 1; persist();
+  if (P) proj({kind:'shard', owner:P, x:u.x, z:u.z, y:-u.h*.6, tgt:P, life:200, nohit:true, n:SAVE.shards});
+  floatText(u, 'Chronos defeated!', '#e0c0ff'); SFX.ult(); shake = 8; flashScreen('#c8a0ff');
+  for (const v of G.units) if (v.master === u && !v.dead) vanish(v);
+}
 function drawBossWarn(){
   const b = G.bossWarn; if (!(b > 0)) return; G.bossWarn--; const t = 170 - b, a = Math.min(1, t/10, b/16), pulse = .5 + .5*Math.sin(t*.35);
   ctx.save(); ctx.globalAlpha = a;
@@ -3591,6 +3618,7 @@ function stepFightInner(){
     if (Math.abs(a.x-b.x) < min && Math.abs(a.z-b.z) < 14){ const push = (min - Math.abs(a.x-b.x))/2*.5, s = a.x < b.x ? -1 : 1; a.x += s*push; b.x -= s*push; }
   }
   runDelayed();
+  hbCheck();
   for (const u of G.units) if (u.recruit && G.units.some(v => v.team === 0 && v.kind === 'hero' && !v.summon && v.alive() && (v.isPlayer || v.isP2) && ((Math.abs(u.x - v.x) < 76 && Math.abs(u.z - v.z) < 50) || v.x > u.x + 160))){
     u.recruit = false; u.team = 0; u.lives = 3; u.inv = 30; floatText(u, 'Joined! ♥×3', '#7dffb8'); SFX.coin(); ring(u.x, sy(u) - 40, '#7dffb8'); addMsg(`A <a>${u.name}</a> joined your team.`); }
   for (const e of G.echoes){ if (--e.t <= 0 && e.o.hittable()){ applyHit(e.o, e.dir, {...e.a, normal:false, dmg:e.a.dmg*.6, kd:false, launch:-3}, e.src);
@@ -3939,6 +3967,7 @@ function drawHoldHUD0(){
     ctx.font = '900 20px ' + UIF; ctx.lineWidth = 5; ctx.strokeText('The boss is coming!', cx, 266); ctx.fillStyle = '#fff'; ctx.fillText('The boss is coming!', cx, 266); ctx.restore(); }
 }
 function startVersus(){
+  S.vs.p1 = openHero(S.vs.p1); S.vs.p2 = openHero(S.vs.p2, 'rajan');
   const V = S.vs, st = STAGES[V.stage];
   G = baseG('versus', st, V.lvl); G.ZW = Math.max(2000, Math.ceil(viewW*2)); G.bounds = { l:0, r:G.ZW };
   G.twoP = !V.cpu; G.round = 1; G.wins = [0,0]; G.timer = 99*60;
@@ -3975,6 +4004,7 @@ function versusTick(){
   }
 }
 function startTeam(){
+  S.tm.a = S.tm.a.map(id => openHero(id)); S.tm.b = S.tm.b.map(id => openHero(id, 'rajan'));
   const T = S.tm, st = STAGES[T.stage];
   G = baseG('team', st, T.lvl); G.ZW = Math.max(2200, Math.ceil(viewW*2.2)); G.bounds = { l:0, r:G.ZW };
   G.twoP = !T.cpu; G.timer = 180*60; fx.length = 0; particles.length = 0; delayed.length = 0;
@@ -4067,10 +4097,11 @@ function drawTeamSetup(){
   ctx.fillStyle = '#3b1206'; ctx.font = '900 12px ' + UIF; ctx.textAlign = 'left'; ctx.fillText(`Tap a fighter for ${T.side ? 'the Red' : 'the Blue'} Team, slot ${T.slot + 1}`, 44, 356);
   HERO_IDS.forEach((id, i) => {
     const cx = 40 + i*RS, by = 434, cur = (T.side ? T.b : T.a)[T.slot] === id;
-    heroSprite(id, 'idle', cx, by, RSZ, cur);
-    hot.push({x:cx - RS/2 + HOTX, y:356, w:RS, h:84, act:() => { (T.side ? T.b : T.a)[T.slot] = id; T.slot++; if (T.slot > 3){ T.slot = 0; T.side ^= 1; } SFX.menu(); }});
+    if (heroLocked(id)) lockedHero(id, cx, by, RSZ); else heroSprite(id, 'idle', cx, by, RSZ, cur);
+    hot.push({x:cx - RS/2 + HOTX, y:356, w:RS, h:84, act:() => { if (heroLocked(id)) return lockToast(id); (T.side ? T.b : T.a)[T.slot] = id; T.slot++; if (T.slot > 3){ T.slot = 0; T.side ^= 1; } SFX.menu(); }});
   });
   btn(360, 456, 240, 56, 'FIGHT!', true, () => { SFX.go(); startTeam(); });
+  drawLockMsg();
   ctx.textAlign = 'center'; ctx.font = '700 11px ' + UIF; ctx.fillStyle = '#fff';
   ctx.fillText('2 heroes per team on the field. When one is K.O.\'d, the next teammate steps in. Beat all 4 to win.', 480, 528);
   btn(30, 466, 110, 40, '‹ Back', false, () => { S.screen = 'missions'; }, true, '#7a5a2a');
@@ -4113,7 +4144,7 @@ function finishGame(won){
   if (G.story && !G.storyDone){ G.storyDone = true; const {ch, i} = G.story;
     if (won && SAVE.story.c[ch] === i) SAVE.story.c[ch] = i + 1;
     { const tm = STORY[ch].steps[i].tame; if (won && tm && PET_DEF[tm]){ const D = PET_DEF[tm]; if (!SAVE.pet || !petUnlocked(SAVE.pet) || PET_DEF[SAVE.pet].ch == null && !SAVE.petPicked) SAVE.pet = tm; S.petNote = `🐾 You tamed the ${D.name}! It joins you as a ${D.stages[0]}. Open Pets to train it.`; } }
-    G.storyCards = [];
+    G.storyCards = won && (G.mode === 'battle' || G.mode === 'hold' || i === STORY[ch].steps.length - 1) ? rollCards(1, .6) : [];
     persist();
     if (G.mode !== 'mission'){ G.result = { won, story:true }; S.screen = 'result'; touchEl.hidden = true; $('cmd').hidden = false; resultT = 0; return; } }
   if (G.online === 'host') netSend('ctl', {t:'end', won, wins:G.wins, mode:G.mode, rw:G.rw});
@@ -4131,7 +4162,7 @@ function finishGame(won){
   persist();
   const after = totalStars();
   if (won && G.mode === 'hold' && !G.story) SAVE.hstars = Math.max(SAVE.hstars||0, stars);
-  const newCards = won && (G.mode === 'mission' || G.mode === 'hold') ? rollCards(1, stars/3 + (G.lv||0)*.3) : [];
+  const newCards = G.storyCards ? G.storyCards : won && (G.mode === 'battle' || G.mode === 'hold') ? rollCards(1, stars/3 + (G.lv||0)*.3) : [];
   resultT = 0;
   G.result = { won, stars, time:G.time, kos:G.kos, gain, ups, newCards, usedCards:G.cards };
   S.screen = 'result'; touchEl.hidden = true;
@@ -4497,20 +4528,44 @@ function drawTeam(){
   gear();
   menuEnd();
 }
+function drawShardPanel(id, h){
+  const n = Math.min(SHARDS_NEED, SAVE.shards || 0), ready = n >= SHARDS_NEED, t = menuT;
+  ctx.textAlign = 'left'; ctx.fillStyle = '#3b1206'; ctx.font = '28px ' + DISP; ctx.fillText(h.name, 656, 92);
+  ctx.font = '900 13px ' + UIF; ctx.fillStyle = '#6a2aa8'; ctx.fillText('HIDDEN HERO · LOCKED', 656, 112);
+  wrap('He travels through time and can appear in the last wave of any mission, in any chapter. Each time you defeat him he drops 1 Soul Shard. Collect 99 to summon him.', 788, 136, 268, 16, '700 12.5px ' + UIF, '#6a3418');
+  ctx.save(); ctx.globalAlpha = .3; heroSprite(id, 'idle', 788, 318, 118); ctx.restore();
+  ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .6 + .2*Math.sin(t*.08); ctx.translate(788, 258); ctx.rotate(t*.01); vimg('vfx_tface', 0, 0, 150, 0); ctx.restore();
+  shardIcon(700, 352, 15, t); ctx.textAlign = 'left'; ctx.fillStyle = '#3b1206'; ctx.font = '900 18px ' + UIF; ctx.fillText(`Soul Shards  ${n} / ${SHARDS_NEED}`, 722, 359);
+  ctx.fillStyle = 'rgba(90,40,10,.2)'; ctx.beginPath(); ctx.roundRect(660, 376, 256, 14, 7); ctx.fill();
+  const g = ctx.createLinearGradient(660, 0, 916, 0); g.addColorStop(0, '#7a3aff'); g.addColorStop(1, '#5ad8ff'); ctx.fillStyle = g; ctx.beginPath(); ctx.roundRect(660, 376, Math.max(14, 256*n/SHARDS_NEED), 14, 7); ctx.fill();
+  ctx.font = '800 11.5px ' + UIF; ctx.fillStyle = '#6a3418'; ctx.textAlign = 'center'; ctx.fillText(ready ? 'Enough shards! Summon him now.' : `${SHARDS_NEED - n} more to go`, 788, 410);
+  if (ready) btn(670, 440, 240, 56, 'Summon Chronos', true, () => { SAVE.shards -= SHARDS_NEED; SAVE.unlocked[id] = true; persist(); S.unlockFx = 90; S.lockMsg = null; SFX.ult(); flashA = .6; flashC = '#c8a0ff'; }, false, '#7a3aff');
+  else { ctx.save(); ctx.globalAlpha = .5; btn(670, 440, 240, 56, 'Locked', false, () => lockToast(id), true, '#6a5a7a'); ctx.restore(); }
+}
+function shardIcon(x, y, r, t){ ctx.save(); ctx.translate(x, y); ctx.rotate(Math.sin(t*.05)*.15);
+  ctx.globalCompositeOperation = 'lighter'; const gl = ctx.createRadialGradient(0, 0, 2, 0, 0, r*1.9); gl.addColorStop(0, 'rgba(180,140,255,.8)'); gl.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(0, 0, r*1.9, 0, 7); ctx.fill(); ctx.globalCompositeOperation = 'source-over';
+  const g = ctx.createLinearGradient(-r, -r, r, r); g.addColorStop(0, '#f0e0ff'); g.addColorStop(.45, '#9a5aff'); g.addColorStop(1, '#3ac8ff');
+  ctx.fillStyle = g; ctx.strokeStyle = '#2a0a50'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, -r*1.3); ctx.lineTo(r*.75, -r*.2); ctx.lineTo(r*.45, r*1.1); ctx.lineTo(-r*.45, r*1.1); ctx.lineTo(-r*.75, -r*.2); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(0, -r*1.2); ctx.lineTo(0, r); ctx.moveTo(-r*.7, -r*.2); ctx.lineTo(r*.7, -r*.2); ctx.stroke(); ctx.restore(); }
+function drawLockMsg(){ const L = S.lockMsg; if (!L || --L.t <= 0) return; ctx.save(); ctx.globalAlpha = Math.min(1, L.t/20); ctx.fillStyle = 'rgba(30,10,50,.92)'; ctx.beginPath(); ctx.roundRect(200, 46, 560, 36, 12); ctx.fill(); ctx.strokeStyle = '#c08aff'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.fillStyle = '#fff'; ctx.font = '900 14px ' + UIF; ctx.textAlign = 'center'; ctx.fillText(`${HEROES[L.id].name} is locked: collect ${SHARDS_NEED} Soul Shards to summon him (${Math.min(SHARDS_NEED, SAVE.shards||0)}/${SHARDS_NEED})`, 480, 69); ctx.restore(); }
 function drawRoster(){
   menuStart(.55);
   topBar(S.slot === 0 ? 'Choose the Hero for Player' : S.slot === 1 ? 'Choose Teammate' : `Choose Backup(${S.slot-1})`, () => { S.screen = 'team'; });
   panel(20, 52, 600, 470);
   HERO_IDS.forEach((id, i) => {
     const NC = Math.ceil(HERO_IDS.length/3), CW = 560/NC, col = i % NC, row = Math.floor(i/NC), cx = 40 + CW/2 + col*CW, by = 186 + row*150, sel = S.rosterSel === id;
-    heroSprite(id, sel ? 'win' : 'idle', cx, by, Math.min(92, CW*1.05), sel);
+    if (heroLocked(id)) lockedHero(id, cx, by, Math.min(92, CW*1.05)); else heroSprite(id, sel ? 'win' : 'idle', cx, by, Math.min(92, CW*1.05), sel);
+    if (sel && heroLocked(id)){ ctx.strokeStyle = '#c08aff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(cx, by, 30, 8, 0, 0, 7); ctx.stroke(); }
     const slot = SAVE.team.indexOf(id);
     ctx.textAlign = 'center'; ctx.font = `900 ${CW < 90 ? 9.5 : 11}px ` + UIF; ctx.fillStyle = '#3b1206'; ctx.fillText(CW < 90 ? HEROES[id].name : `${HEROES[id].name}  Lv ${lvOf(id)}`, cx, by + 16); if (CW < 90){ ctx.font = '800 9px ' + UIF; ctx.fillStyle = '#7a3a14'; ctx.fillText(`Lv ${lvOf(id)}`, cx, by + 27); }
     if (slot >= 0){ ctx.font = '800 11px ' + UIF; ctx.fillStyle = '#c0392b'; ctx.fillText(SLOT_NAMES[slot] + (slot>1 ? `(${slot-1})` : ''), cx, by - 108); }
-    hot.push({x:cx-CW/2+HOTX, y:by-120, w:CW, h:144, act:() => { if (S.rosterSel === id) chooseHero(); else { S.rosterSel = id; SFX.menu(); } }});
+    hot.push({x:cx-CW/2+HOTX, y:by-120, w:CW, h:144, act:() => { if (S.rosterSel === id && !heroLocked(id)) chooseHero(); else { S.rosterSel = id; SFX.menu(); } }});
   });
   const id = S.rosterSel, h = HEROES[id], lv = lvOf(id), xp = SAVE.xp[id]||0;
   panel(636, 52, 304, 470);
+  if (heroLocked(id)){ drawShardPanel(id, h); drawLockMsg(); menuEnd(); return; }
+  if (S.unlockFx > 0){ S.unlockFx--; ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = Math.min(1, S.unlockFx/30); const g = ctx.createRadialGradient(788, 240, 10, 788, 240, 220); g.addColorStop(0, 'rgba(200,160,255,.9)'); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = g; ctx.fillRect(636, 52, 304, 470); ctx.restore(); }
   ctx.textAlign = 'left'; ctx.fillStyle = '#3b1206'; ctx.font = '28px ' + DISP; ctx.fillText(h.name, 656, 92);
   ctx.font = '900 13px ' + UIF; ctx.fillStyle = shadeC(h.color, -.35); ctx.fillText(h.title.toUpperCase(), 656, 112);
   ctx.textAlign = 'right'; ctx.fillStyle = '#3b1206'; ctx.font = '900 16px ' + UIF; ctx.fillText(`Level ${lv}`, 920, 92);
@@ -4530,11 +4585,12 @@ function drawRoster(){
     ctx.fillStyle = '#2a6abf'; ctx.font = '800 12px ' + UIF; ctx.textAlign = 'right'; ctx.fillText(s.cost + ' MP', 920, y+5);
   });
   btn(670, 462, 240, 48, 'Choose this Hero', true, chooseHero);
+  drawLockMsg();
   menuEnd();
 }
 function drawVersusSetup(){
   menuStart(.55);
-  const V = S.vs;
+  const V = S.vs; V.p1 = openHero(V.p1); V.p2 = openHero(V.p2, 'rajan');
   topBar('Versus', () => { S.screen = 'modes'; });
   for (const [side, id] of [[0, V.p1], [1, V.p2]]){
     const cx = side ? 790 : 170, on = V.side === side;
@@ -4556,13 +4612,14 @@ function drawVersusSetup(){
   ctx.fillStyle = '#3b1206'; ctx.font = '900 12px ' + UIF; ctx.textAlign = 'left'; ctx.fillText(`Tap a fighter for ${V.side ? (V.cpu ? 'the computer' : 'Player 2') : 'Player 1'}`, 44, 322);
   HERO_IDS.forEach((id, i) => {
     const cx = 40 + i*RS, by = 408, sel = V[V.side ? 'p2' : 'p1'] === id;
-    heroSprite(id, 'idle', cx, by, RSZ + 6, sel);
-    hot.push({x:cx-RS/2+HOTX, y:322, w:RS, h:92, act:() => { V[V.side ? 'p2' : 'p1'] = id; if (V.side === 0) V.side = 1; SFX.menu(); }});
+    if (heroLocked(id)) lockedHero(id, cx, by, RSZ + 6); else heroSprite(id, 'idle', cx, by, RSZ + 6, sel);
+    hot.push({x:cx-RS/2+HOTX, y:322, w:RS, h:92, act:() => { if (heroLocked(id)) return lockToast(id); V[V.side ? 'p2' : 'p1'] = id; if (V.side === 0) V.side = 1; SFX.menu(); }});
   });
   btn(360, 430, 240, 58, 'FIGHT!', true, () => { SFX.go(); startVersus(); });
   ctx.textAlign = 'center'; ctx.font = '700 12px ' + UIF; ctx.fillStyle = '#fff';
   ctx.fillText(V.cpu ? 'Best of 3 rounds. Fill the gold bar by landing hits, then press ★ (Y) for your special.' : 'Player 1: W A S D, J K L, U I O, Y special  ·  Player 2: arrows, 1 2 3 / , . /, 4 5 6, 7 special (numpad)', 480, 510);
   btn(30, 440, 110, 40, '‹ Back', false, () => { S.screen = 'missions'; }, true, '#7a5a2a');
+  drawLockMsg();
   menuEnd();
 }
 function drawCard(x, y, w, h, k, count, sel, flip){
@@ -4587,7 +4644,7 @@ function drawDeck(){
   panel(16, 50, 600, 474);
   const per = 18, pages = Math.max(1, Math.ceil(keys.length/per)); S.deckPage = Math.min(S.deckPage||0, pages - 1);
   const show = keys.slice(S.deckPage*per, S.deckPage*per + per);
-  if (!keys.length){ wrap('Your deck is empty. Each mission you clear gives 1 random buff card. Replay missions to earn more.', 316, 240, 420, 20, '800 15px ' + UIF, '#4a2410'); }
+  if (!keys.length){ wrap('Your deck is empty. Win Battle Mode, Hold the Fort, or a chapter\'s final boss stage to get 1 random buff card each time.', 316, 240, 420, 20, '800 15px ' + UIF, '#4a2410'); }
   show.forEach((k, i) => {
     const col = i % 6, row = Math.floor(i/6), x = 34 + col*96, y = 66 + row*142;
     drawCard(x, y, 86, 120, k, SAVE.deck[k], S.deckSel === k);
@@ -4616,6 +4673,7 @@ function drawDeck(){
   menuEnd();
 }
 function chooseHero(){
+  if (heroLocked(S.rosterSel)){ lockToast(S.rosterSel); return; }
   const id = S.rosterSel, cur = SAVE.team.indexOf(id), prev = SAVE.team[S.slot];
   if (cur >= 0) SAVE.team[cur] = prev || null;
   SAVE.team[S.slot] = id;
@@ -4702,7 +4760,7 @@ function drawResult(){
     ctx.fillStyle = '#b4441a'; ctx.font = '900 14px ' + UIF; ctx.fillText('New buff cards for your deck!', 480, 272);
     const n = r.newCards.length, cw = 62, gap = 14, x0 = 480 - (n*cw + (n-1)*gap)/2;
     r.newCards.forEach((k, i) => { const fl = Math.min(1, Math.max(0, (resultT - 20 - i*14)/14)); drawCard(x0 + i*(cw+gap), 280, cw, 86, k, 0, false, fl); });
-  } else if (r.won === false){ ctx.fillStyle = '#7a3a14'; ctx.font = '800 13px ' + UIF; ctx.fillText('Clear the mission to earn a buff card.', 480, 300); }
+  } else if (r.won === false && (G.mode === 'battle' || G.mode === 'hold')){ ctx.fillStyle = '#7a3a14'; ctx.font = '800 13px ' + UIF; ctx.fillText('Win to earn a buff card.', 480, 300); }
   btn(250, 384, 140, 46, 'Retry', false, () => battle ? startBattle() : startMission(G.mi), true);
   btn(410, 384, 140, 46, 'Team', false, () => { S.screen = 'team'; }, true, '#7a5a2a');
   btn(570, 384, 140, 46, r.won && !battle && G.mi < MISSIONS.length-1 ? 'Next' : 'Missions', true, () => { if (r.won && !battle && G.mi < MISSIONS.length-1){ S.mi = G.mi+1; S.mode = 'mission'; S.screen = 'team'; } else S.screen = 'missions'; }, true);
@@ -4734,8 +4792,8 @@ function menuKeys(){
   else if (S.screen === 'scene'){ if (back) S.screen = 'chapter'; if (okk) storyStart(S.sch, S.sst); }
   else if (S.screen === 'missions'){ if (L){ S.mode = 'mission'; S.mi = (S.mi+4)%5; } if (R){ S.mode = 'mission'; S.mi = (S.mi+1)%5; } if (L||R) SFX.menu(); if (okk) S.screen = 'team'; if (back) S.screen = 'modes'; }
   else if (S.screen === 'team'){ if (okk){ if (S.mode === 'story') storyStart(S.sch, S.sst); else if (S.mode === 'battle') startBattle(); else startMission(S.mi); } if (back) S.screen = S.mode === 'story' ? 'scene' : 'missions'; }
-  else if (S.screen === 'roster'){ const n = HERO_IDS.length, i = HERO_IDS.indexOf(S.rosterSel); if (L) S.rosterSel = HERO_IDS[(i+n-1)%n]; if (R) S.rosterSel = HERO_IDS[(i+1)%n]; if (okk) chooseHero(); if (back) S.screen = 'team'; }
-  else if (S.screen === 'versus'){ const n = HERO_IDS.length, key = S.vs.side ? 'p2' : 'p1', i = HERO_IDS.indexOf(S.vs[key]); if (L) S.vs[key] = HERO_IDS[(i+n-1)%n]; if (R) S.vs[key] = HERO_IDS[(i+1)%n]; if (L||R) SFX.menu(); if (pr.includes('Tab') || pr.includes('KeyQ')) S.vs.side ^= 1; if (okk) startVersus(); if (back) S.screen = 'missions'; }
+  else if (S.screen === 'roster'){ if (L) S.rosterSel = HERO_IDS[(HERO_IDS.indexOf(S.rosterSel) + HERO_IDS.length - 1) % HERO_IDS.length]; if (R) S.rosterSel = HERO_IDS[(HERO_IDS.indexOf(S.rosterSel) + 1) % HERO_IDS.length]; if (okk) chooseHero(); if (back) S.screen = 'team'; }
+  else if (S.screen === 'versus'){ const key = S.vs.side ? 'p2' : 'p1'; if (L) S.vs[key] = stepHero(S.vs[key], -1); if (R) S.vs[key] = stepHero(S.vs[key], 1); if (L||R) SFX.menu(); if (pr.includes('Tab') || pr.includes('KeyQ')) S.vs.side ^= 1; if (okk) startVersus(); if (back) S.screen = 'missions'; }
   else if (S.screen === 'online'){ if (back){ netLeave(); S.screen = 'missions'; } if (okk && NET.role === 'host' && NET.connected) netStartMatch(); }
   else if (S.screen === 'deck'){ if (back || okk) S.screen = S.deckFrom || 'missions'; }
   else if (S.screen === 'teamvs'){ if (okk) startTeam(); if (back) S.screen = 'missions'; }
@@ -5262,12 +5320,13 @@ function drawOnline(){
   ctx.fillText(NET.mode === 'team' ? `Tap fighters to build your team of 4 (slot ${(S.onSlot||0) + 1})` : 'Tap your fighter', 44, 294);
   HERO_IDS.forEach((id, i) => {
     const cx = 40 + i*RS, by = 380, cur = NET.mode === 'team' ? my.team.includes(id) : my.p === id;
-    heroSprite(id, 'idle', cx, by, RSZ, cur);
-    hot.push({x:cx - RS/2 + HOTX, y:296, w:RS, h:88, act:() => { if (NET.mode === 'team'){ const s = S.onSlot||0; my.team[s] = id; S.onSlot = (s + 1) % 4; } else my.p = id; netSend('ctl', {t:'pick', ...my}); SFX.menu(); }});
+    if (heroLocked(id)) lockedHero(id, cx, by, RSZ); else heroSprite(id, 'idle', cx, by, RSZ, cur);
+    hot.push({x:cx - RS/2 + HOTX, y:296, w:RS, h:88, act:() => { if (heroLocked(id)) return lockToast(id); if (NET.mode === 'team'){ const s = S.onSlot||0; my.team[s] = id; S.onSlot = (s + 1) % 4; } else my.p = id; netSend('ctl', {t:'pick', ...my}); SFX.menu(); }});
   });
   if (host) btn(360, 404, 240, 56, 'FIGHT!', true, () => { SFX.go(); netStartMatch(); });
   else { ctx.textAlign = 'center'; ctx.font = '900 16px ' + UIF; ctx.fillStyle = '#ffe27a'; ctx.fillText('Waiting for the host to press FIGHT…', 480, 438); }
   btn(30, 412, 110, 40, 'Leave', false, () => netLeave(''), true, '#7a2e14');
+  drawLockMsg();
   ctx.textAlign = 'center'; ctx.font = '700 11px ' + UIF; ctx.fillStyle = '#fff'; ctx.fillText('The host runs the match; each player uses their own controls (keyboard or touch).', 480, 500);
   if (NET.msg){ ctx.font = '900 13px ' + UIF; ctx.fillStyle = '#ffe27a'; ctx.fillText(NET.msg, 480, 520); }
   menuEnd();
