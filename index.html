@@ -4621,7 +4621,7 @@ function loadStoryArt(c){
   const want = STORY.map(ch => ch.cover); if (c != null && STORY[c]) want.push(...STORY[c].steps.map(s => s.art)); if (G && G.story && STORY[G.story.ch]) want.push(STORY[G.story.ch].steps[G.story.i].art);
   for (const k of want) if (!storyArt[k]){ const im = new Image(); im.decoding = 'async'; im.src = AU(k + '.webp'); storyArt[k] = im; }
 }
-const STORY_MAPS = {1:'storymap_c2', 3:'storymap_c4', 4:'storymap_c5', 5:'storymap_c6'};
+const STORY_MAPS = {0:'storymap_c1', 1:'storymap_c2', 2:'storymap_c3', 3:'storymap_c4', 4:'storymap_c5', 5:'storymap_c6'};
 const STAGE_ICONS = ['mission','versus','team','battle','hold','tame','boss'];
 function loadMapArt(c){ const want = STAGE_ICONS.map(k => 'stage_' + k); if (STORY_MAPS[c]) want.push(STORY_MAPS[c]);
   for (const k of want) if (!storyArt[k]){ const im = new Image(); im.decoding = 'async'; im.src = AU(k + '.webp'); storyArt[k] = im; } }
