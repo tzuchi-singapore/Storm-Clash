@@ -371,6 +371,7 @@ const SHARDS_NEED = 60;
 const BOSS_IDS = ['lord','madsci','brute','vraxx','queen','bone','curse','chronos','pharaoh','qin','daoist','niu'];
 for (const id of BOSS_IDS) if (HEROES[id]) HEROES[id].lockd = true;
 const heroLocked = id => !!(HEROES[id] && HEROES[id].lockd && !(SAVE.unlocked && SAVE.unlocked[id]));
+if (!SAVE.resetJW3){ SAVE.unlocked = SAVE.unlocked || {}; for (const id in HEROES) if (HEROES[id].lockd) delete SAVE.unlocked[id]; SAVE.hstar = {}; SAVE.gems = 3000; SAVE.resetJW3 = 1; try { localStorage.setItem('stormclash3', JSON.stringify(SAVE)); } catch(e){} }
 const openHero = (id, fb) => heroLocked(id) ? (fb || HERO_IDS.find(h => !heroLocked(h))) : id;
 /* ===== economy: coins, gems, energy, soul shards, hero stars ===== */
 const ECO = { EMAX:30, ECOST:2, EREGEN:20*60*1000, COINCAP:2000, PITY:80, STAGECOIN:50, SOUL:60 };
