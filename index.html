@@ -116,7 +116,7 @@ try { const s = JSON.parse(localStorage.getItem('stormclash3') || 'null'); if (s
 if (!SAVE.story) SAVE.story = { c:[0, 0, 0, 0, 0] };
 if (!SAVE.storyV2){ SAVE.storyV2 = true; SAVE.story.c = SAVE.story.c.map(n => n >= 9 ? n + 1 : n); }
 while (SAVE.story.c.length < 7) SAVE.story.c.push(0);
-if (!SAVE.grantJW1){ SAVE.unlocked = SAVE.unlocked || {}; SAVE.unlocked.daoist = SAVE.unlocked.niu = true; SAVE.grantJW1 = 1; try { localStorage.setItem('stormclash3', JSON.stringify(SAVE)); } catch(e){} }
+if (!SAVE.grantJW2){ SAVE.unlocked = SAVE.unlocked || {}; delete SAVE.unlocked.daoist; delete SAVE.unlocked.niu; SAVE.gems = (SAVE.gems || 0) + 60000; SAVE.grantJW2 = 1; try { localStorage.setItem('stormclash3', JSON.stringify(SAVE)); } catch(e){} }
 if (!SAVE.storyV3){ SAVE.storyV3 = true; const OLDPOS = [0,2,4,6,8,10,12,14,17,19,21]; SAVE.story.c = SAVE.story.c.map(n => n >= 11 ? 22 : n > 0 ? OLDPOS[n-1] + 1 : 0); }
 if (SAVE.shards == null) SAVE.shards = 0; if (!SAVE.unlocked) SAVE.unlocked = {};
 setTimeout(() => { try { ecoInit(); } catch(e){} }, 0);
@@ -373,7 +373,7 @@ for (const id of BOSS_IDS) if (HEROES[id]) HEROES[id].lockd = true;
 const heroLocked = id => !!(HEROES[id] && HEROES[id].lockd && !(SAVE.unlocked && SAVE.unlocked[id]));
 const openHero = (id, fb) => heroLocked(id) ? (fb || HERO_IDS.find(h => !heroLocked(h))) : id;
 /* ===== economy: coins, gems, energy, soul shards, hero stars ===== */
-const ECO = { EMAX:30, ECOST:2, EREGEN:20*60*1000, COINCAP:1000, STAGECOIN:50, SOUL:60 };
+const ECO = { EMAX:30, ECOST:2, EREGEN:20*60*1000, COINCAP:2000, PITY:80, STAGECOIN:50, SOUL:60 };
 const rint = n => Math.floor(Math.random()*n), pick = a => a[rint(a.length)];
 function dayKey(){ const d = new Date(); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }
 function ecoInit(){
@@ -409,22 +409,23 @@ let PEND_DIFF = null;
 /* chests */
 const CHESTS = { common:{ name:'Common Chest', col:'#c8925a' }, uncommon:{ name:'Uncommon Chest', col:'#4ad86a' }, rare:{ name:'Rare Chest', col:'#4aa8ff' }, epic:{ name:'Epic Chest', col:'#b06aff' }, legend:{ name:'Legendary Chest', col:'#ffc23a' }, star:{ name:'Star Chest', col:'#ffe27a' } };
 const CHEST_KEYS = ['common','uncommon','rare','epic','legend'];
-function mergeR(A, B){ A.gems += B.gems || 0; A.coins += B.coins || 0; A.energy += B.energy || 0; for (const k in (B.souls || {})) A.souls[k] = (A.souls[k] || 0) + B.souls[k]; if (B.heroes) A.heroes.push(...B.heroes); return A; }
+function mergeR(A, B){ if (B.pityHit) A.pityHit = true; A.gems += B.gems || 0; A.coins += B.coins || 0; A.energy += B.energy || 0; for (const k in (B.souls || {})) A.souls[k] = (A.souls[k] || 0) + B.souls[k]; if (B.heroes) A.heroes.push(...B.heroes); return A; }
 const emptyR = () => ({ gems:0, coins:0, energy:0, souls:{}, heroes:[] });
 function rollChest(type){ const R = emptyR();
-  if (type === 'common') R.gems = 5 + rint(6);
-  else if (type === 'uncommon') R.gems = 10 + rint(11);
-  else if (type === 'rare') R.souls = randSouls(2);
-  else if (type === 'epic') R.souls = randSouls(6);
-  else if (type === 'legend'){ const r = Math.random();
-    if (r < .70) R.souls = randSouls(20);
-    else if (r < .97){ const id = pick(HERO_IDS); addSouls(id, 20); R.souls = { [id]:20 }; R.one = id; }
+  if (type === 'common') R.gems = 10 + rint(11);
+  else if (type === 'uncommon') R.gems = 20 + rint(21);
+  else if (type === 'rare') R.souls = randSouls(4);
+  else if (type === 'epic') R.souls = randSouls(12);
+  else if (type === 'legend'){ const r = Math.random(); SAVE.pity = (SAVE.pity || 0) + 1; const pity = SAVE.pity >= ECO.PITY;
+    if (pity){ SAVE.pity = 0; R.pityHit = true; }
+    if (!pity && r < .70) R.souls = randSouls(40);
+    else if (!pity && r < .97){ const id = pick(HERO_IDS); addSouls(id, 40); R.souls = { [id]:40 }; R.one = id; }
     else { const pool = HERO_IDS.filter(heroLocked), id = pool.length ? pick(pool) : pick(HERO_IDS);
       if (heroLocked(id)) SAVE.unlocked[id] = true; else { addSouls(id, ECO.SOUL); R.souls = { [id]:ECO.SOUL }; } R.heroes.push(id); } }
   SAVE.gems += R.gems; persist(); return R; }
 function openChests(type, n){ const R = emptyR(); for (let i=0;i<n;i++) mergeR(R, rollChest(type)); S.open = { type, n, R, t:0 }; }
 function openFromBag(type, n){ n = Math.min(n, SAVE.inv[type] || 0); if (n <= 0) return; SAVE.inv[type] -= n; persist(); openChests(type, n); }
-const STAR_CHESTS = [[11,3,50,50],[22,3,75,75],[33,4,100,100],[44,4,150,150],[55,5,200,200],[66,10,500,500]];
+const STAR_CHESTS = [[11,6,100,100],[22,6,150,150],[33,8,200,200],[44,8,300,300],[55,10,400,400],[66,20,1000,1000]];
 const chStars = c => ((SAVE.story.st || {})[c] || []).reduce((a, b) => a + (b || 0), 0);
 const chestTaken = (c, k) => !!((SAVE.story.chest || {})[c] || [])[k];
 function claimStarChest(c, k){ const [need, so, ge, co] = STAR_CHESTS[k]; if (chStars(c) < need || chestTaken(c, k)) return;
@@ -433,11 +434,11 @@ function claimStarChest(c, k){ const [need, so, ge, co] = STAR_CHESTS[k]; if (ch
 /* shop */
 const SHOP = [
   { id:'energy', name:'Energy Pack', desc:'+20 energy right away', cur:'gem', price:20, icon:'ic_energy' },
-  { id:'common', name:'Common Chest', desc:'5 – 10 gems', cur:'free', price:0, limit:2, chest:'common' },
-  { id:'uncommon', name:'Uncommon Chest', desc:'10 – 20 gems', cur:'coin', price:500, limit:10, chest:'uncommon' },
-  { id:'rare', name:'Rare Chest', desc:'2 random soul shards', cur:'gem', price:50, chest:'rare' },
-  { id:'epic', name:'Epic Chest', desc:'6 random soul shards', cur:'gem', price:100, chest:'epic' },
-  { id:'legend', name:'Legendary Chest', desc:'20 random shards · or 20 of one hero · 3%: a whole hero!', cur:'gem', price:300, chest:'legend', multi:[10, 3000] },
+  { id:'common', name:'Common Chest', desc:'10 – 20 gems', cur:'free', price:0, limit:2, chest:'common' },
+  { id:'uncommon', name:'Uncommon Chest', desc:'20 – 40 gems', cur:'coin', price:500, limit:10, chest:'uncommon' },
+  { id:'rare', name:'Rare Chest', desc:'4 random soul shards', cur:'gem', price:50, chest:'rare' },
+  { id:'epic', name:'Epic Chest', desc:'12 random soul shards', cur:'gem', price:100, chest:'epic' },
+  { id:'legend', name:'Legendary Chest', desc:'40 random shards · or 40 of one hero · 3%: a whole hero!', cur:'gem', price:300, chest:'legend', multi:[10, 3000] },
 ];
 function shopLeft(it){ if (!it.limit) return Infinity; ecoTick(); return Math.max(0, it.limit - (SAVE.daily[it.id] || 0)); }
 function shopBuy(it, n){ n = n || 1; const cost = n === 1 ? it.price : it.multi[1];
@@ -1315,8 +1316,8 @@ const SPEC = {
     u:{dur:52, pose:'sk_u', tick(m,t){ m.vx = 0; if (t===12){ proj({kind:'laser', owner:m, dir:m.face, oy:-m.h*.86, eye:true, len:520, w:9, life:34, every:6, maxHits:5, pierce:true, dmg:10, kb:.4, stun:26, r:10, gold:true, sk:'erlang.u'}); flashScreen('#fff6d0'); SFX.ult(); } }},
     d:{dur:70, pose:(m)=> m.t < 26 ? ['atk1','atk2','atk3'][Math.floor(m.t/8) % 3] : 'sk_d', tick(m,t){ m.vx *= .7;
         if (t===6 || t===14 || t===22){ m.vx = m.face*2; swing(m, 130, {dmg:10, kb:.4, stun:30, sk:'erlang.d'}, '#bfe0ff'); }
-        if (t===30){ sparks(m.x + m.face*60, sy(m) - 60, '#ffd84a', 16); SFX.skill(); }
-        if (t===36 || t===44 || t===52){ const last = t === 52; m.vx = m.face*3.4; swing(m, 175, last ? {dmg:12, kb:6, launch:-10, kd:true, unblock:true, sk:'erlang.d'} : {dmg:11, kb:.5, stun:30, unblock:true, sk:'erlang.d'}, '#ffe27a'); staffFx(m, 150, 8, false); } }},
+        if (t===30){ sparks(m.x + m.face*60, sy(m) - 60, '#ffd84a', 16); SFX.skill(); lanceSpin(m, 34); }
+        if (t===36 || t===44 || t===52){ const last = t === 52; m.vx = m.face*3.4; swing(m, 175, last ? {dmg:12, kb:6, launch:-10, kd:true, unblock:true, sk:'erlang.d'} : {dmg:11, kb:.5, stun:30, unblock:true, sk:'erlang.d'}, '#ffe27a'); } }},
   },
   xtqbig: {
     f:{dur:44, pose:'sk_f', tick(m,t){ m.vx = 0; if (t===8){ SFX.roar(); shake = 8; } if (t===10 || t===18 || t===26){ const last = t === 26; ringHit(m, 180, last ? {dmg:10, kb:1, stun:80, unblock:true, sk:'xtqbig.f'} : {dmg:8, kb:.3, stun:30, unblock:true, sk:'xtqbig.f'}); shockFx(m, m.x + m.face*30, m.z, '#ffe27a', 170); } }},
@@ -2938,6 +2939,20 @@ function drawWhip(u, gx, gy){
     for (let i=1;i<=8;i++){ const k = i/8; ctx.lineTo(hx + (tx - hx)*k + rnd(-4,4), hy + (ty - hy)*k + Math.sin(k*Math.PI)*-18 + rnd(-6,6)); } ctx.stroke(); }
   ctx.fillStyle = big ? '#d8c0ff' : '#bff4ff'; ctx.beginPath(); ctx.arc(tx, ty, big ? 9 : 6, 0, 7); ctx.fill(); ctx.restore();
 }
+function drawLance(L, gold){ // three-pointed two-edged lance along +x, centred on origin
+  const h = L/2; ctx.lineCap = 'round';
+  ctx.strokeStyle = '#3a2a1a'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(-h, 0); ctx.lineTo(h - 18, 0); ctx.stroke();
+  ctx.strokeStyle = gold ? '#ffe9a0' : '#c8d0dc'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-h, -1); ctx.lineTo(h - 18, -1); ctx.stroke();
+  ctx.fillStyle = '#c0281a'; ctx.beginPath(); ctx.moveTo(h - 22, 0); ctx.lineTo(h - 34, 9); ctx.lineTo(h - 30, 0); ctx.lineTo(h - 34, -9); ctx.fill();
+  const bl = gold ? '#fff3c0' : '#e8eef6', ed = gold ? '#ffb020' : '#7a8698'; ctx.fillStyle = bl; ctx.strokeStyle = ed; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(h - 20, -4); ctx.lineTo(h + 26, 0); ctx.lineTo(h - 20, 4); ctx.closePath(); ctx.fill(); ctx.stroke();
+  for (const sgn of [-1, 1]){ ctx.beginPath(); ctx.moveTo(h - 20, sgn*3); ctx.quadraticCurveTo(h - 8, sgn*16, h + 8, sgn*14); ctx.quadraticCurveTo(h - 4, sgn*9, h - 14, sgn*3); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+  ctx.fillStyle = '#ffd84a'; ctx.fillRect(h - 24, -6, 5, 12);
+  ctx.fillStyle = bl; ctx.beginPath(); ctx.moveTo(-h + 2, -3); ctx.lineTo(-h - 14, 0); ctx.lineTo(-h + 2, 3); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+function lanceSpin(m, life){ jvis({owner:m, x:m.x, z:m.z + .3, life, tick(p){ p.x = m.x + m.face*(70 + Math.min(1, p.t/life)*40); p.z = m.z + .3; }, draw(p, gx, gy, t){ const a = Math.min(1, t/4, (life - t)/5), cy = gy + m.y - m.h*.52, rot = t*.55*m.face;
+    ctx.save(); ctx.globalAlpha = a; ctx.globalCompositeOperation = 'lighter'; for (let i=1;i<=4;i++){ ctx.strokeStyle = `rgba(255,215,90,${.3 - i*.06})`; ctx.lineWidth = 10; ctx.beginPath(); ctx.arc(gx, cy, 62, rot - i*.35, rot - i*.35 + .5); ctx.stroke(); ctx.beginPath(); ctx.arc(gx, cy, 62, rot + Math.PI - i*.35, rot + Math.PI - i*.35 + .5); ctx.stroke(); }
+    const g = ctx.createRadialGradient(gx, cy, 4, gx, cy, 70); g.addColorStop(0, 'rgba(255,240,170,.55)'); g.addColorStop(1, 'rgba(255,200,60,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(gx, cy, 70, 0, 7); ctx.fill();
+    ctx.globalCompositeOperation = 'source-over'; ctx.translate(gx, cy); ctx.rotate(rot); drawLance(124, true); ctx.restore(); } }); }
 function drawThirdEye(x, y, H, t){ const k = Math.min(1, t/6), r = H*.06, pulse = 1 + Math.sin(G.frame*.35)*.12;
   ctx.save(); ctx.globalCompositeOperation = 'lighter';
   const g = ctx.createRadialGradient(x, y, 0, x, y, r*3.2*pulse); g.addColorStop(0, `rgba(255,250,200,${.95*k})`); g.addColorStop(.35, `rgba(255,210,80,${.6*k})`); g.addColorStop(1, 'rgba(255,170,30,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r*3.2*pulse, 0, 7); ctx.fill();
@@ -5221,6 +5236,9 @@ function drawShop(){
     vimg(it.chest ? 'chest_' + it.chest : it.icon, x + w/2, y + 72 + Math.sin(t*.05 + i)*2, it.chest ? 104 : 80, 0);
     ctx.textAlign = 'center'; ctx.fillStyle = '#3b1206'; ctx.font = '20px ' + DISP; ctx.fillText(it.name, x + w/2, y + 146);
     ctx.font = '800 12px ' + UIF; ctx.fillStyle = '#6a3418'; { const n = wrapN(it.desc, x + w/2, y + 164, w - 30, 14, '800 11.5px ' + UIF, '#6a3418'); }
+    if (it.chest === 'legend'){ const pc = SAVE.pity || 0, bx = x + 14, by = y + 12, bw = w - 28; ctx.fillStyle = 'rgba(60,20,0,.25)'; ctx.beginPath(); ctx.roundRect(bx, by, bw, 14, 7); ctx.fill();
+      const pg = ctx.createLinearGradient(bx, 0, bx + bw, 0); pg.addColorStop(0, '#ffb43a'); pg.addColorStop(1, '#ff5ad8'); ctx.fillStyle = pg; ctx.beginPath(); ctx.roundRect(bx, by, Math.max(14, bw*pc/ECO.PITY), 14, 7); ctx.fill();
+      ctx.font = '900 10px ' + UIF; ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.strokeStyle = 'rgba(60,20,0,.7)'; ctx.lineWidth = 3; const pt = `Hero guaranteed in ${ECO.PITY - pc} · ${pc}/${ECO.PITY}`; ctx.strokeText(pt, bx + bw/2, by + 11); ctx.fillText(pt, bx + bw/2, by + 11); }
     if (it.limit){ ctx.font = '900 11px ' + UIF; ctx.fillStyle = left > 0 ? '#1f7a3a' : '#b4441a'; ctx.textAlign = 'right'; ctx.fillText(left > 0 ? `${left}/${it.limit} left today` : 'Sold out today', x + w - 14, y + 22); }
     if (it.multi){ priceBtn(x + 14, y + 180, 126, 36, it.cur, it.price, () => shopBuy(it, 1)); priceBtn(x + 150, y + 180, 128, 36, it.cur, it.multi[1], () => shopBuy(it, it.multi[0]));
       for (const [bx, lb] of [[x + 14 + 126, '×1'], [x + 150 + 128, '×10']]){ ctx.fillStyle = '#e8343a'; ctx.beginPath(); ctx.roundRect(bx - 26, y + 172, 28, 16, 8); ctx.fill(); ctx.fillStyle = '#fff'; ctx.font = '900 10px ' + UIF; ctx.textAlign = 'center'; ctx.fillText(lb, bx - 12, y + 184); } }
