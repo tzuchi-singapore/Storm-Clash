@@ -1883,8 +1883,10 @@ Object.assign(SPEC, {
   },
 });
 function smoke(x, z, n){ for (let i=0;i<n;i++) particles.push({x:x + rnd(-26,26), y:G.st.FT + z - rnd(0,90), vx:rnd(-1.2,1.2), vy:-rnd(.2,1.2), life:rnd(26,40), max:40, col:'rgba(220,220,230,.8)', kind:'smoke', s:rnd(12,22)}); }
+const SUMMON_LIFE = 480;
 function summon(m, sid, x, z, o){
   const h = HEROES[sid];
+  if (o && !o.heroSummon && !o.portalSum){ o = {...o, lifeT:Math.min(o.lifeT || SUMMON_LIFE, SUMMON_LIFE)}; if (o.lifeMax) o.lifeMax = o.lifeT; }
   const u = new Unit(Object.assign({ kind:'hero', id:sid, team:m.team, name:h.name, hp:999, spd:h.spd, pow:h.pow * (m.pow / HEROES[m.id].pow), h:h.h, color:h.color, x, z:Math.max(4, Math.min(ZMAX()-4, z)), face:m.face, mp:0, regen:0, seed:Math.random()*100|0, lv:m.lv, summon:true, master:m, entered:true, inv:12, cool:rnd(10,30) }, o));
   G.units.push(u);
   if (sid === 'golem' || sid === 'iceking'){ for (let i=0;i<16;i++) particles.push({x:u.x + rnd(-30,30), y:sy(u) - rnd(0,u.h), vx:rnd(-2,2), vy:-rnd(1,4), life:24, max:24, col:'#d8f6ff', kind:'spark'}); ring(u.x, sy(u) - 10, '#bff4ff'); }
@@ -1893,7 +1895,8 @@ function summon(m, sid, x, z, o){
 }
 function keepSummons(m, sid, n, opts, place){
   const cur = G.units.filter(v => v.master === m && v.id === sid && !v.dead);
-  for (const v of cur){ Object.assign(v, opts); v.flash = 10; v.burn = v.poison = v.shock = 0; ring(v.x, sy(v) - v.h*.5, '#9fe8ff'); for (let i=0;i<10;i++) particles.push({x:v.x + rnd(-18,18), y:sy(v) - rnd(10, v.h), vx:0, vy:-rnd(.6,1.8), life:30, max:30, col:'#9fe8ff', kind:'plus'}); floatText(v, 'Refreshed', '#9fe8ff'); }
+  const { lifeT:_lt, lifeMax:_lm, ...keep } = opts;
+  for (const v of cur){ Object.assign(v, keep); v.flash = 10; v.burn = v.poison = v.shock = 0; ring(v.x, sy(v) - v.h*.5, '#9fe8ff'); for (let i=0;i<10;i++) particles.push({x:v.x + rnd(-18,18), y:sy(v) - rnd(10, v.h), vx:0, vy:-rnd(.6,1.8), life:30, max:30, col:'#9fe8ff', kind:'plus'}); floatText(v, 'Refreshed', '#9fe8ff'); }
   for (let i = cur.length; i < n; i++){ const [x, z] = place(i); summon(m, sid, x, z, {...opts}); }
 }
 function vanish(u){
@@ -2232,7 +2235,7 @@ function updateFx(){
         if (cur.length){ Object.assign(cur[0], {hitsLeft:5, lifeT:300, x:p.x, z:p.z}); cur[0].flash = 10; } else { const u = summon(o, 'kclone', p.x, p.z, {hitsLeft:5, lifeT:300}); u.face = o.face; } smoke(p.x, p.z, 12); } }
     if (p.kind === 'egg'){ const o = p.owner; if (p.t >= p.life){ p.dead = true; if (!o.alive()) continue;
         const cur = G.units.filter(v => v.master === o && v.id === 'hatch' && !v.dead);
-        if (cur.length >= 2){ const v = cur[p.idx % cur.length]; Object.assign(v, {hitsLeft:3, lifeT:900, x:p.x, z:p.z}); v.flash = 10; } else summon(o, 'hatch', p.x, p.z, {hitsLeft:3, lifeT:900});
+        if (cur.length >= 2){ const v = cur[p.idx % cur.length]; Object.assign(v, {hitsLeft:3, x:p.x, z:p.z}); v.flash = 10; } else summon(o, 'hatch', p.x, p.z, {hitsLeft:3, lifeT:900});
         for (let i=0;i<12;i++) particles.push({x:p.x + rnd(-10,10), y:G.st.FT + p.z - rnd(0,30), vx:rnd(-3,3), vy:-rnd(1,4), life:20, max:20, col: i%2 ? '#a0ff6a' : '#d04aff', kind:'spark'}); SFX.hit(); }
       continue; }
     if (p.kind === 'firepatch' && p.t % 3 === 0 && p.t < p.life - 6) particles.push({x:p.x + rnd(-p.hitR, p.hitR), y:G.st.FT + p.z - rnd(0, 20), vx:rnd(-.3,.3), vy:-rnd(1,2.4), life:20, max:20, col: Math.random() < .5 ? '#ffb43a' : '#ff5a2a', kind:'fire'});
@@ -3291,7 +3294,7 @@ const PET_DEF = {
          r:{name:'Frost Roar',lv:35,passive:true,img:'vfx_phail_i',d:'Passive: every 10s roars for +50% attack, speed and mana for 5s.'},
          t:{name:'Ice Tornado',lv:40,passive:true,img:'vfx_ptorn_i',d:'Passive: his 3rd normal hit calls an ice tornado that lifts and freezes, 3 hits.'},
          k:{name:'Golem Knights',lv:45,passive:true,img:'gmk_ice_idle',d:'Passive: the minis become sword knights (6 hits each) with 3-hit freezing slashes.'},
-         b:{name:'Blizzard',lv:50,cost:150,img:'vfx_phail_i',d:'Ultimate: ice shards rain down and freeze, up to 10 hits. Revive time -5s.'} } },
+         b:{name:'Blizzard',lv:50,cost:150,img:'vfx_phail_i',d:'Ultimate: ice shards rain down and freeze, up to 10 hits.'} } },
   fire:{ name:'Flame Golem', el:'fire', v:'f', col:'#ffb43a', ids:['gfire1','gfire2','gfire3','gfire4','gfire5','gfire6'], hs:[70,92,100,122,132,148], lvs:[1,10,20,30,40,50], mini:['gmi_fire','gmk_fire'], kind:'Golem · Fire',
     stages:['Baby Ember Golem','Magma Golem','Armoured Magma Golem','Volcano Golem','Volcano Warlord','Flame Golem King'],
     sk:{ f:{name:'Fire Shard',lv:5,cost:60,img:'vfx_pshard_f',d:'Shoots 3 fire shards forward that burn enemies.'},
@@ -3303,7 +3306,7 @@ const PET_DEF = {
          r:{name:'Rage Roar',lv:35,passive:true,img:'vfx_phail_f',d:'Passive: every 10s roars for +50% attack, speed and mana for 5s.'},
          t:{name:'Fire Tornado',lv:40,passive:true,img:'vfx_ptorn_f',d:'Passive: his 3rd normal hit calls a fire tornado that lifts and burns, 3 hits.'},
          k:{name:'Magma Knights',lv:45,passive:true,img:'gmk_fire_idle',d:'Passive: the minis become sword knights (6 hits each) with 3-hit burning slashes.'},
-         b:{name:'Meteor Storm',lv:50,cost:150,img:'vfx_phail_f',d:'Ultimate: meteors rain down and burn, up to 10 hits. Revive time -5s.'} } },
+         b:{name:'Meteor Storm',lv:50,cost:150,img:'vfx_phail_f',d:'Ultimate: meteors rain down and burn, up to 10 hits.'} } },
 };
 /* the chapter pets: each is tamed in its chapter (stage 4), evolves 4 times and has its own element */
 const NEWPET = (pid, o) => { const v = o.v, SK = {}, L = {f:5,u:10,a:15,s:20,m:25,o:30,r:35,t:40,k:45,b:50}, C = {f:60,u:90,s:80,o:100,b:150}, IM = {f:'pshard',u:'pspear',a:'pcirc',s:'pshield',o:'porb',r:'phail',t:'ptorn',b:'phail'};
@@ -3315,49 +3318,49 @@ NEWPET('dragon', { name:'Thunder Dragon', el:'storm', v:'drag', col:'#8cc8ff', c
        a:['Static Field','Passive: a crackling field shocks and slows enemies nearby.'], s:['Dragon Scale Ward','A scale shield that blocks 5 attacks. Revive time -5s.'],
        m:['Hatchlings','Passive: every 10s 2 baby dragons (3 hits each) join with shocking bites.'], o:['Ball Lightning','A rolling ball of lightning, up to 8 hits. Revive time -5s.'],
        r:['Dragon Roar','Passive: every 10s roars for +50% attack, speed and mana for 5s.'], t:['Thunder Cyclone','Passive: the 3rd normal hit calls a storm cyclone, 3 hits.'],
-       k:['Drake Guard','Passive: the hatchlings grow into storm drakes (6 hits each).'], b:['Heavenly Tribulation','Ultimate: the sky splits and lightning rains down, up to 10 hits. Revive time -5s.'] } });
+       k:['Drake Guard','Passive: the hatchlings grow into storm drakes (6 hits each).'], b:['Heavenly Tribulation','Ultimate: the sky splits and lightning rains down, up to 10 hits.'] } });
 NEWPET('phoenix', { name:'Vermilion Phoenix', el:'fire', v:'phx', col:'#ff8a3a', ch:1, kind:'Holy Beast · Fire', revMul:.7, ids:['pphx1','pphx2','pphx2b','pphx3','pphx3b','pphx4'], hs:[66,90,108,124,138,150],
   stages:['Phoenix Chick','Young Fire Bird','Blaze Phoenix','Vermilion Phoenix','Sun Phoenix','Divine Zhuque'],
   sk:{ f:['Flame Feathers','Throws 3 burning feathers forward.'], u:['Sunfire Rain','A phoenix seal in the sky rains 5 fire spears. Revive time -5s.'],
        a:['Ember Aura','Passive: embers burn enemies nearby. Comes back from knock-outs 30% faster (rebirth).'], s:['Phoenix Wings','Wraps itself in burning wings that block 5 attacks. Revive time -5s.'],
        m:['Chick Flock','Passive: every 10s 2 phoenix chicks (3 hits each) peck with burning beaks.'], o:['Sun Orb','A tiny sun that rolls forward, up to 8 hits. Revive time -5s.'],
        r:['Phoenix Cry','Passive: every 10s cries out for +50% attack, speed and mana for 5s.'], t:['Fire Whirl','Passive: the 3rd normal hit calls a fire whirl, 3 hits.'],
-       k:['Fire Bird Guard','Passive: the chicks grow into fire birds (6 hits each).'], b:['Rebirth Inferno','Ultimate: sunfire rains on the field, up to 10 hits. Revive time -5s.'] } });
+       k:['Fire Bird Guard','Passive: the chicks grow into fire birds (6 hits each).'], b:['Rebirth Inferno','Ultimate: sunfire rains on the field, up to 10 hits.'] } });
 NEWPET('tiger', { name:'White Tiger', el:'metal', v:'tig', col:'#cfe6ff', ch:2, kind:'Holy Beast · Metal', ids:['ptig1','ptig2','ptig2b','ptig3','ptig3b','ptig4'], hs:[62,88,104,122,136,152],
   stages:['White Tiger Cub','Young White Tiger','Frost-Striped Tiger','Armoured War Tiger','Thunder-Blade Tiger','Baihu, Guardian of the West'],
   sk:{ f:['Claw Crescent','Slashes 3 silver claw crescents forward that rend armour (foes take +15% damage).'], u:['Sky Blades','A white tiger seal in the sky drops 5 holy blades. Revive time -5s.'],
        a:['Killing Intent','Passive: its fierce aura rends enemies nearby so they take +15% damage.'], s:['Metal Hide','Hardens its fur into a steel shield that blocks 5 attacks. Revive time -5s.'],
        m:['Tiger Cubs','Passive: every 10s 2 tiger cubs (3 hits each) join with rending swipes.'], o:['Blade Orb','A spinning ring of blades, up to 8 hits. Revive time -5s.'],
        r:['Tiger Roar','Passive: every 10s roars for +50% attack, speed and mana for 5s.'], t:['Steel Whirlwind','Passive: the 3rd normal hit calls a whirlwind of blades, 3 hits.'],
-       k:['Tiger Guard','Passive: the cubs grow into young white tigers (6 hits each).'], b:['Judgement of the West','Ultimate: a rain of holy blades falls on enemies, up to 10 hits. Revive time -5s.'] } });
+       k:['Tiger Guard','Passive: the cubs grow into young white tigers (6 hits each).'], b:['Judgement of the West','Ultimate: a rain of holy blades falls on enemies, up to 10 hits.'] } });
 NEWPET('xeno', { name:'Xeno-Mech', el:'tech', v:'xeno', col:'#4ff0d0', ch:3, kind:'Alien · Robot', ids:['pxeno1','pxeno2','pxeno2b','pxeno3','pxeno3b','pxeno4'], hs:[66,96,112,128,144,158],
   stages:['Xeno Blob','Alien Trooper','Exo Trooper','Mech Suit','Siege Mech','Titan Mech'],
   sk:{ f:['Acid Blaster','Fires 3 acid shots that poison enemies.'], u:['Missile Barrage','Locks on and drops 5 missiles. Revive time -5s.'],
        a:['Toxic Field','Passive: leaking acid poisons enemies nearby.'], s:['Energy Barrier','A hex barrier that blocks 5 attacks. Revive time -5s.'],
        m:['Blob Drones','Passive: every 10s 2 xeno blobs (3 hits each) join with acid punches.'], o:['Plasma Vortex','A swirling plasma vortex, up to 8 hits. Revive time -5s.'],
        r:['Overclock','Passive: every 10s overclocks for +50% attack, speed and mana for 5s.'], t:['Toxic Twister','Passive: the 3rd normal hit calls a toxic twister, 3 hits.'],
-       k:['Trooper Squad','Passive: the blobs become alien troopers (6 hits each).'], b:['Orbital Strike','Ultimate: acid rain from orbit, up to 10 hits. Revive time -5s.'] } });
+       k:['Trooper Squad','Passive: the blobs become alien troopers (6 hits each).'], b:['Orbital Strike','Ultimate: acid rain from orbit, up to 10 hits.'] } });
 NEWPET('fox', { name:'Nine-Tailed Fox', el:'spirit', v:'fox', col:'#a99bff', ch:4, kind:'Yokai · Spirit', ids:['pfox1','pfox2','pfox2b','pfox3','pfox3b','pfox4'], hs:[60,86,104,120,136,150],
   stages:['Fox Kit','Three-Tailed Fox','Four-Tailed Shrine Fox','Six-Tailed Kitsune','Eight-Tailed Spirit Fox','Nine-Tailed Divine Fox'],
   sk:{ f:['Foxfire Spirits','Sends 3 spirit foxes of blue fire that burn and slow.'], u:['Lantern Rain','A fox seal in the sky drops 5 spirit lanterns. Revive time -5s.'],
        a:["Will-o'-Wisps",'Passive: foxfire floats around it and slows and burns enemies nearby.'], s:['Talisman Ward','A ring of paper talismans that blocks 5 attacks. Revive time -5s.'],
        m:['Kit Familiars','Passive: every 10s 2 fox kits (3 hits each) join with foxfire bites.'], o:['Spirit Vortex','A violet spirit vortex, up to 8 hits. Revive time -5s.'],
        r:['Kitsune Howl','Passive: every 10s howls for +50% attack, speed and mana for 5s.'], t:['Foxfire Whirl','Passive: the 3rd normal hit calls a foxfire whirl, 3 hits.'],
-       k:['Fox Guard','Passive: the kits grow into three-tailed foxes (6 hits each).'], b:['Nine-Tail Inferno','Ultimate: nine tails rain foxfire, up to 10 hits. Revive time -5s.'] } });
+       k:['Fox Guard','Passive: the kits grow into three-tailed foxes (6 hits each).'], b:['Nine-Tail Inferno','Ultimate: nine tails rain foxfire, up to 10 hits.'] } });
 NEWPET('anubis', { name:'Anubis', el:'soul', v:'anub', col:'#c08aff', ch:5, kind:'Egyptian God · Soul', ids:['pan1','pan2','pan3','pan4','pan5','pan6'], hs:[60,88,104,120,140,158],
   stages:['Jackal Pup','Young Jackal','Tomb Guardian','Jackal Warrior','Guardian of the Dead','Divine Anubis'],
   sk:{ f:['Soul Jackals','Sends 3 purple soul jackals that drain and slow.'], u:['Ankh Rain','A judgement seal in the sky drops 5 golden ankhs. Revive time -5s.'],
        a:['Underworld Aura','Passive: soul fire around it poisons and slows enemies nearby.'], s:['Scarab Shield','A golden scarab shield that blocks 5 attacks. Revive time -5s.'],
        m:['Jackal Pack','Passive: every 10s 2 jackal pups (3 hits each) join with soul bites.'], o:['Soul Orb','A swirling soul orb, up to 8 hits. Revive time -5s.'],
        r:['Howl of the Dead','Passive: every 10s howls for +50% attack, speed and mana for 5s.'], t:['Sand Cyclone','Passive: the 3rd normal hit calls a sand and soul cyclone, 3 hits.'],
-       k:['Jackal Guard','Passive: the pups grow into young jackals (6 hits each).'], b:['Weighing of Hearts','Ultimate: golden judgement falls on every enemy, up to 10 hits. Revive time -5s.'] } });
+       k:['Jackal Guard','Passive: the pups grow into young jackals (6 hits each).'], b:['Weighing of Hearts','Ultimate: golden judgement falls on every enemy, up to 10 hits.'] } });
 NEWPET('horse', { name:'White Dragon Horse', el:'water', v:'hor', col:'#7fe0ff', ch:6, kind:'Dragon Steed · Water', ids:['phor1','phor2','phor2b','phor3','phor3b','phor4'], hs:[64,90,104,122,138,156],
   stages:['Little White Foal','White Steed','Pilgrim Steed','Dragon-Blood Steed','Armoured Dragon Steed','Third Prince of the West Sea'],
   sk:{ f:['Water Arrows','Shoots 3 water arrows that soak and push enemies back.'], u:['Tidal Spears','A dragon seal in the sky drops 5 water spears. Revive time -5s.'],
        a:['Soaking Mist','Passive: a mist soaks enemies nearby so they deal 15% less damage.'], s:['Bubble Ward','A water bubble that blocks 5 attacks. Revive time -5s.'],
        m:['Little Foals','Passive: every 10s 2 white foals (3 hits each) join with soaking kicks.'], o:['Dragon Pearl','A rolling dragon pearl, up to 8 hits. Revive time -5s.'],
        r:['Dragon Neigh','Passive: every 10s neighs for +50% attack, speed and mana for 5s.'], t:['Water Spout','Passive: the 3rd normal hit calls a water spout, 3 hits.'],
-       k:['Steed Guard','Passive: the foals grow into white steeds (6 hits each).'], b:['Four Seas Deluge','Ultimate: the four seas pour down on enemies, up to 10 hits. Revive time -5s.'] } });
+       k:['Steed Guard','Passive: the foals grow into white steeds (6 hits each).'], b:['Four Seas Deluge','Ultimate: the four seas pour down on enemies, up to 10 hits.'] } });
 const PET_IDS = Object.keys(PET_DEF);
 /* element status effects: [small hit, big hit] */
 const PET_ST = { ice:[{slow:150},{freeze:50}], fire:[{burn:100},{burn:120}], storm:[{shock:40, stun:24},{shock:70}], holy:[{slow:110},{slow:160}], tech:[{poison:140},{poison:200}], spirit:[{burn:80, slow:70},{burn:100, slow:110}], soul:[{poison:100, slow:70},{poison:140, slow:110}], metal:[{rend:150},{rend:210}], water:[{soak:150, kb:2.6},{soak:210, kb:2.2}] };
@@ -3380,7 +3383,7 @@ const petUnlocked = pid => PET_DEF[pid] && (PET_DEF[pid].ch == null || (SAVE.sto
 const petTameStep = pid => { const D = PET_DEF[pid]; return D.ch == null ? null : STORY[D.ch].steps.findIndex(s => s.tame === pid); };
 const petPicksAvail = lv => { let n = 0; for (let L = 1; L <= lv; L++) if (L % 5 || L > 50) n++; return n; };
 const petPending = P => Math.max(0, petPicksAvail(petLv(P)) - (P.hp + P.spd + P.atk));
-const petRevive = (lv, pid) => Math.round((1800 - 300*[10,20,30,50].filter(L => lv >= L).length) * ((PET_DEF[pid] && PET_DEF[pid].revMul) || 1));
+const petRevive = (lv, pid) => Math.round((1800 - 300*[10,20,30].filter(L => lv >= L).length) * ((PET_DEF[pid] && PET_DEF[pid].revMul) || 1));
 const petStatsLv = (lv, P) => { P = P || {hp:0, spd:0, atk:0}; return { lv, hp:Math.round(138*LVHP(lv)*(1 + .08*P.hp)), spd:.9*LVSPD(lv)*(1 + .05*P.spd), pow:.26*LVPOW(lv)*(1 + .06*P.atk) }; };
 function petStats(pid){ const P = petSave(pid); return petStatsLv(petLv(P), P); }
 const petEl = m => PD(m).el;
@@ -3508,9 +3511,9 @@ function petTick1(u){
     if (--u.reviveT <= 0 && pl){ u.down = false; u.hp = u.maxhp; u.hpShow = u.hp; u.mp = 120; u.x = pl.x - pl.face*60; u.z = pl.z; u.y = 0; u.vx = u.vy = 0; u.set('getup'); u.inv = 90; ring(u.x, sy(u) - 50, D.col); for (let i=0;i<20;i++) particles.push({x:u.x + rnd(-30,30), y:sy(u) - rnd(0, u.h), vx:0, vy:-rnd(.5,2.5), life:30, max:30, col:D.col, kind:'spark'}); floatText(u, u.pid === 'phoenix' ? 'Reborn!' : 'Back!', D.col); SFX.heal(); }
     return; }
   if (u.hp <= 0){ for (const v of G.units) if (v.master === u && !v.dead) vanish(v);
-    if (u.foePet){ u.gone = true; if (u.state !== 'fall' && u.state !== 'lying'){ u.set('fall'); u.vy = -4; u.vx = -u.face*2; } vanish(u); if (u.wild) wildPetDown(u); return; }
+    if (u.wild){ u.gone = true; if (u.state !== 'fall' && u.state !== 'lying'){ u.set('fall'); u.vy = -4; u.vx = -u.face*2; } vanish(u); wildPetDown(u); return; }
     u.down = true; u.reviveT = petRevive(lv, u.pid); u.hp = 0; u.shieldN = 0; u.buffT2 = 0; if (u.state !== 'fall' && u.state !== 'lying'){ u.set('fall'); u.vy = -4; u.vx = -u.face*2; }
-    addMsg(`<a>${D.name}</a> is down. Back in ${Math.ceil(u.reviveT/60)}s.`); return; }
+    addMsg(u.foePet ? `<e>${u.master ? u.master.name + '\'s ' : ''}${D.name}</e> is down. Back in ${Math.ceil(u.reviveT/60)}s unless its hero is beaten.` : `<a>${D.name}</a> is down. Back in ${Math.ceil(u.reviveT/60)}s.`); return; }
   if (pl && Math.abs(pl.x - u.x) > 700 && u.can()){ smoke(u.x, u.z, 8); u.x = pl.x - pl.face*70; u.z = pl.z; smoke(u.x, u.z, 8); }
   const far = (pl && Math.abs(pl.x - u.x) > 240 && !u.tgtNear) || (u.tgtNear && u.tgtDist > 150), roar = u.buffT2 > 0;
   if (u.buffT2 > 0){ u.buffT2--; if (G.frame % 4 === 0) particles.push({x:u.x + rnd(-20,20), y:sy(u) - rnd(10, u.h), vx:0, vy:-rnd(.5,1.5), life:20, max:20, col:D.col, kind:'fire'}); }
